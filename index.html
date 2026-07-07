@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pendulum Lab — The Double-Pendulum Chaos Engine</title>
+<meta name="description" content="A framework-free TypeScript engine and browser laboratory for nonlinear pendulum dynamics — twelve order-certified integrators, full Lyapunov diagnostics, WebGPU-certified chaos pipelines, and bit-reproducible research bundles. 959 unit tests, validated against SciPy and published literature." />
+<meta property="og:title" content="Pendulum Lab — The Double-Pendulum Chaos Engine" />
+<meta property="og:description" content="Order, undone by chaos. A validated chaotic-pendulum research laboratory that runs entirely in your browser." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://elliot-jung-17.github.io/pendulum-landing/" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="assets/landing.css" />
+
+<!-- Three.js (the core R3F wraps) for the hero sculpture -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<!-- GSAP + ScrollTrigger for scroll choreography -->
+<script src="https://unpkg.com/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://unpkg.com/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+</head>
+<body>
+
+<div class="page-bg"></div>
+<div class="page-grain"></div>
+<canvas id="hero-canvas"></canvas>
+<div class="hero-scrim"></div>
+<div class="cursor-glow"></div>
+<div class="scroll-progress"></div>
+
+<!-- ============================== NAV ============================== -->
+<nav class="nav">
+  <a class="brand" href="#top" aria-label="Pendulum Lab home">
+    <span class="mark">
+      <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="5" r="2.4" fill="#18d4f8"/>
+        <path d="M16 6.5 L23 16 L19 25" stroke="#18d4f8" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+        <circle cx="23" cy="16" r="2" fill="#9d78ff"/>
+        <circle cx="19" cy="25" r="2.8" fill="#18d4f8"/>
+      </svg>
+    </span>
+    <span><span class="name">Pendulum Lab</span></span>
+  </a>
+  <div class="nav-links">
+    <a href="#science">Science</a>
+    <a href="#capabilities">Platform</a>
+    <a href="#modes">Modes</a>
+    <a href="#frontier">Frontier</a>
+    <a href="#validation">Validation</a>
+    <a href="#guide">Guide</a>
+  </div>
+  <div class="nav-cta">
+    <a class="btn primary sm" href="https://elliot-jung-17.github.io/pendulum-lab/" data-app-link>Launch Simulation <span class="arrow">→</span></a>
+  </div>
+</nav>
+
+<!-- ============================== HERO ============================== -->
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="kicker" data-mouse="6">Double-Pendulum Chaos Engine</span>
+        <h1 class="display" data-mouse="16">
+          <span class="grad">Order,</span><br />
+          <span class="dissolve">undone by</span><br />
+          <span class="grad">chaos.</span>
+        </h1>
+        <p class="lede" data-mouse="9">
+          A framework-free TypeScript engine for nonlinear pendulum dynamics —
+          twelve integrators measured at their theoretical order, full-spectrum
+          Lyapunov diagnostics, WebGPU pipelines certified against CPU oracles,
+          and results reproducible to the bit. Determinism, engineered for the
+          very edge of predictability.
+        </p>
+        <div class="hero-actions" data-mouse="6">
+          <a class="btn primary" href="https://elliot-jung-17.github.io/pendulum-lab/" data-app-link>Launch Simulation <span class="arrow">→</span></a>
+          <a class="btn ghost" href="https://github.com/Elliot-Jung-17/pendulum-lab">Source on GitHub</a>
+        </div>
+      </div>
+
+      <aside class="hero-spec" data-mouse="22">
+        <div class="spec-card" data-tilt>
+          <div class="spec-head">
+            <span class="label">Engine Spec</span>
+            <span class="live-dot"><i></i> Verified</span>
+          </div>
+          <div class="spec-row"><span class="k">system</span><span class="v">double · triple · N-link</span></div>
+          <div class="spec-row"><span class="k">integrator</span><span class="v cy">GBS · order 6</span></div>
+          <div class="spec-row"><span class="k">energy drift</span><span class="v">8.97e-13</span></div>
+          <div class="spec-row"><span class="k">λ-max</span><span class="v vi">positive (chaotic)</span></div>
+          <div class="spec-row"><span class="k">backend</span><span class="v">worker · WebGPU</span></div>
+        </div>
+        <div class="spec-card" data-tilt>
+          <div class="spec-head">
+            <span class="label">Credibility</span>
+            <span class="live-dot"><i></i> 959 / 959 pass</span>
+          </div>
+          <div class="spec-row"><span class="k">vs SciPy DOP853</span><span class="v cy">~6e-14</span></div>
+          <div class="spec-row"><span class="k">unit tests</span><span class="v">959 green</span></div>
+          <div class="spec-row"><span class="k">period-doubling A</span><span class="v">1.0664</span></div>
+          <div class="spec-row"><span class="k">mutation tested</span><span class="v vi">Stryker aggregate</span></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="hero-foot" data-mouse="4">
+      <span class="scroll-cue"><i></i> Scroll to descend</span>
+      <span>Drag to orbit · move to parallax</span>
+    </div>
+  </div>
+</header>
+
+<!-- ============================== MARQUEE ============================== -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <span class="dot">◆</span> Runge–Kutta 4 <span class="dot">◆</span> Dormand–Prince 5(4) <span class="dot">◆</span> Gragg–Bulirsch–Stoer <span class="dot">◆</span> Lyapunov Spectrum <span class="dot">◆</span> Covariant Lyapunov Vectors <span class="dot">◆</span> Poincaré Sections <span class="dot">◆</span> Kaplan–Yorke Dimension <span class="dot">◆</span> Melnikov Threshold <span class="dot">◆</span> Floquet Continuation <span class="dot">◆</span> Koopman–DMD <span class="dot">◆</span> HAVOK <span class="dot">◆</span> SINDy <span class="dot">◆</span> FTLE Ridges <span class="dot">◆</span> Basin Entropy <span class="dot">◆</span>
+    <span class="dot">◆</span> Runge–Kutta 4 <span class="dot">◆</span> Dormand–Prince 5(4) <span class="dot">◆</span> Gragg–Bulirsch–Stoer <span class="dot">◆</span> Lyapunov Spectrum <span class="dot">◆</span> Covariant Lyapunov Vectors <span class="dot">◆</span> Poincaré Sections <span class="dot">◆</span> Kaplan–Yorke Dimension <span class="dot">◆</span> Melnikov Threshold <span class="dot">◆</span> Floquet Continuation <span class="dot">◆</span> Koopman–DMD <span class="dot">◆</span> HAVOK <span class="dot">◆</span> SINDy <span class="dot">◆</span> FTLE Ridges <span class="dot">◆</span> Basin Entropy <span class="dot">◆</span>
+  </div>
+</div>
+
+<!-- ============================== SCIENCE ============================== -->
+<section class="band solid" id="science">
+  <div class="wrap">
+    <div class="science-grid">
+      <div class="reveal">
+        <span class="kicker">Sensitive Dependence</span>
+        <h2 data-rise style="font-size:clamp(30px,4.4vw,56px);margin:18px 0 18px;">A thousandth of a radian becomes a different universe.</h2>
+        <p class="lede" style="max-width:52ch;">
+          Release two double pendulums a hair apart and they trace the same arc —
+          until they don't. Trajectories peel away exponentially, prediction
+          collapses into noise. That rate of divergence <em>is</em> the largest
+          Lyapunov exponent, and measuring it honestly — every parameter disclosed,
+          every uncertainty owned — is the entire discipline.
+        </p>
+        <div class="lyap-readout">
+          <div class="stat">
+            <span class="num" data-count="6" data-decimals="0" data-prefix="~" data-suffix="e-14"></span>
+            <span class="lab">Reference agreement · 20 s</span>
+          </div>
+          <div class="stat">
+            <span class="num">e<span class="u">λ₁t</span></span>
+            <span class="lab">Law of chaotic divergence</span>
+          </div>
+          <div class="stat">
+            <span class="num" data-count="100" data-decimals="0" data-suffix="%"></span>
+            <span class="lab">Parameters disclosed</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="diverge-stage" data-parallax="0.08">
+          <svg viewBox="0 0 400 320" preserveAspectRatio="xMidYMid meet" aria-label="Sensitive dependence: two trajectories diverging">
+            <line class="grid-line" x1="0" y1="80" x2="400" y2="80"/>
+            <line class="grid-line" x1="0" y1="160" x2="400" y2="160"/>
+            <line class="grid-line" x1="0" y1="240" x2="400" y2="240"/>
+            <line class="grid-line" x1="120" y1="0" x2="120" y2="320"/>
+            <line class="grid-line" x1="240" y1="0" x2="240" y2="320"/>
+            <path class="draw-path" d="M58 168 C 104 118, 150 132, 186 164 S 250 248, 300 150 S 360 92, 384 134"
+                  stroke="#18d4f8" stroke-width="2.4" style="filter:drop-shadow(0 0 6px rgba(24,212,248,.85));"/>
+            <path class="draw-path" d="M58 168 C 104 118, 150 132, 186 164 S 250 96, 300 206 S 360 252, 384 212"
+                  stroke="#9d78ff" stroke-width="2.4" style="filter:drop-shadow(0 0 6px rgba(157,120,255,.85));"/>
+            <circle class="seed" cx="58" cy="168" r="4.4" style="filter:drop-shadow(0 0 8px rgba(223,246,255,.9));"/>
+          </svg>
+          <div class="diverge-tag">
+            <span><b class="a">●</b> θ₂ = 2.300</span>
+            <span><b class="b">●</b> θ₂ = 2.301</span>
+          </div>
+        </div>
+        <p style="margin-top:14px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;color:var(--muted);text-align:right;">
+          Identical start · 1.0e-3 rad apart → exponential divergence
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CAPABILITIES ============================== -->
+<section class="band" id="capabilities">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">The Platform</span>
+      <h2 data-rise>Everything a chaos study demands — measured, tested, proven.</h2>
+      <p>Five disciplines — numerics, physics, chaos diagnostics, visualization, reproducibility — each unit-tested against closed-form, energy, and independent reference criteria.</p>
+    </div>
+
+    <div class="cap-grid" data-stagger>
+      <article class="cap-card">
+        <span class="idx">01</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><path d="M3 17c3-8 6-8 9 0s6 8 9 0"/><circle cx="3" cy="17" r="1.4"/><circle cx="21" cy="17" r="1.4"/></svg></span>
+        <h3>Twelve integrators</h3>
+        <p>Euler through RK4, embedded RKF45 &amp; Dormand-Prince 5(4), Gauss-Legendre 4/6, Yoshida-4, Gragg-Bulirsch-Stoer, and L-stable TR-BDF2 — each measured at its theoretical order, plus a full-Newton implicit midpoint with condition-number diagnostics.</p>
+        <div class="tags"><span class="tag">RK4</span><span class="tag">DOPRI5</span><span class="tag">GBS</span><span class="tag">TR-BDF2</span></div>
+      </article>
+
+      <article class="cap-card">
+        <span class="idx">02</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><path d="M4 20 L9 6 L13 16 L17 9 L20 14"/></svg></span>
+        <h3>Chaos diagnostics</h3>
+        <p>Maximal &amp; full-spectrum Lyapunov exponents, covariant Lyapunov vectors, Kaplan-Yorke dimension, SALI / FLI, Poincaré sections, the 0–1 test, RQA, basin entropy, and automated bifurcation sweeps — each with an uncertainty estimate.</p>
+        <div class="tags"><span class="tag">λ-spectrum</span><span class="tag">CLV</span><span class="tag">0–1 test</span><span class="tag">RQA</span></div>
+      </article>
+
+      <article class="cap-card">
+        <span class="idx">03</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="2"/><circle cx="12" cy="18" r="2.6"/><path d="M12 8 L12 15.4"/></svg></span>
+        <h3>Physical systems</h3>
+        <p>Double, triple, and generalized N-pendulum, driven and damped-driven oscillators, Kapitza and magnetic pendulums, elastic springs, coupled-pendulum lattices, plus a true 3D spherical &amp; rope pendulum with conserved E and Lz readouts.</p>
+        <div class="tags"><span class="tag">N-pendulum</span><span class="tag">driven</span><span class="tag">lattice</span><span class="tag">3D Lab</span></div>
+      </article>
+
+      <article class="cap-card">
+        <span class="idx">04</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="2"/><path d="M3.5 14 L9 9 L13 13 L20.5 6"/></svg></span>
+        <h3>Honest visualization</h3>
+        <p>Pure-canvas, colorblind-safe Okabe-Ito renderers; phase portraits, Poincaré maps, FTLE ridges, and a publication figure pipeline with deterministic SVG and visual-regression fingerprints across desktop and mobile baselines.</p>
+        <div class="tags"><span class="tag">phase 3D</span><span class="tag">FTLE</span><span class="tag">figures</span></div>
+      </article>
+
+      <article class="cap-card">
+        <span class="idx">05</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><path d="M12 3 L20 7 V13 C20 17 16 20 12 21 C8 20 4 17 4 13 V7 Z"/><path d="M9 12 l2 2 l4 -4"/></svg></span>
+        <h3>Total reproducibility</h3>
+        <p>Hash-stamped run manifests that re-verify to the bit, real ZIP research bundles with per-file CRC32 checksums, an IndexedDB long-term store with archive import / export, and evidence attestation tying every report to its source commit.</p>
+        <div class="tags"><span class="tag">manifests</span><span class="tag">CRC32</span><span class="tag">attested</span></div>
+      </article>
+
+      <article class="cap-card">
+        <span class="idx">06</span>
+        <span class="glyph"><svg viewBox="0 0 24 24"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg></span>
+        <h3>Certified WebGPU scale</h3>
+        <p>Heavy chaos jobs run in a typed Web Worker with a priority queue, checkpoint / resume, and graceful fallback — and the WebGPU ensemble, full-spectrum, CLV, and FTLE kernels are promoted only after passing a same-run CPU f64 oracle comparison.</p>
+        <div class="tags"><span class="tag">worker V2</span><span class="tag">WebGPU</span><span class="tag">CPU oracle</span></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== MODES ============================== -->
+<section class="band solid" id="modes">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">Three Workspaces</span>
+      <h2 data-rise>From first swing to peer review — the interface grows with you.</h2>
+      <p>Every launch opens a workspace chooser. A four-step spotlight tour greets first-time visitors, every menu entry explains itself in one plain-language line — in English or Korean — and a command palette (Ctrl+K) reaches everything.</p>
+    </div>
+
+    <div class="mode-grid" data-stagger>
+      <article class="mode-card">
+        <span class="mode-tag">Beginner</span>
+        <h3>Watch it move</h3>
+        <p>A focused simulator: the live pendulum, one-click presets from <em>Butterfly</em> to <em>Whirling</em>, and the safest physical controls. No jargon, no clutter — just motion.</p>
+        <ul class="mode-list">
+          <li>Guided onboarding tour</li>
+          <li>Preset motions with plain tooltips</li>
+          <li>Menu guide in English / 한국어</li>
+        </ul>
+      </article>
+      <article class="mode-card featured">
+        <span class="mode-tag">Student</span>
+        <h3>Ask it questions</h3>
+        <p>Adds the analysis workspaces: energy and Lyapunov plots, chaos maps, bifurcation sweeps, 3D phase space, validation runs, and exports — with every method labeled by what it actually measures.</p>
+        <ul class="mode-list">
+          <li>Analyze &amp; Validate menus unlock</li>
+          <li>Integrator comparison side-by-side</li>
+          <li>CSV / PNG / JSON exports</li>
+        </ul>
+      </article>
+      <article class="mode-card">
+        <span class="mode-tag">Research</span>
+        <h3>Publish the answer</h3>
+        <p>The full surface: chaos diagnostics, Trust Inspector provenance on every quoted number, reviewer kit, governance, research bundles, and the certified workbench with persisted studies.</p>
+        <ul class="mode-list">
+          <li>Trust Inspector evidence panels</li>
+          <li>Reproducible research bundles</li>
+          <li>Reviewer console &amp; audit trail</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== FRONTIER ============================== -->
+<section class="band" id="frontier">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">Research Frontier</span>
+      <h2 data-rise>Beyond simulation: a self-validating dynamics library.</h2>
+      <p>The headless core ships as a typed library with a CLI for batch studies. Every frontier module carries its own falsifiable test contract — closed-form anchors, convergence orders, or cross-method agreement.</p>
+    </div>
+
+    <div class="frontier-grid" data-stagger>
+      <article class="frontier-card">
+        <h3>Melnikov flagship</h3>
+        <p>The analytic chaos threshold vs the measured period-doubling onset — an engine-sized gap map, certified against literature anchors.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Floquet &amp; continuation</h3>
+        <p>Multipliers on corrected periodic orbits, Mathieu stability tongues, arclength continuation with branch switching, Neimark-Sacker tracking.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Koopman · DMD · HAVOK</h3>
+        <p>Data-driven operator views of the flow: dynamic mode decomposition and Hankel-alternative analysis on a shared thin-SVD core.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>SINDy &amp; surrogates</h3>
+        <p>Sparse regression rediscovers the equations of motion; polynomial-chaos surrogates yield analytic Sobol sensitivity decompositions.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Krylov eigensolvers</h3>
+        <p>Restarted thick-restart Lanczos for the symmetric case and an Arnoldi–Schur solver for non-symmetric spectra — matrix-free, test-pinned.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Lattice &amp; phonons</h3>
+        <p>Coupled pendulum chains reproduce the analytic dispersion relation — the same normal-mode physics that underpins solid-state phonons.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Quantum kicked rotor</h3>
+        <p>Finite-dimensional quantum Floquet quasi-energies beside their classical chaos counterparts — one engine, both regimes.</p>
+      </article>
+      <article class="frontier-card">
+        <h3>Noise &amp; escape</h3>
+        <p>Stochastic resonance, Euler–Maruyama ensembles with Welford moments, and Kramers escape rates for thermal-noise physics.</p>
+      </article>
+    </div>
+
+    <div class="guide-foot reveal">
+      <a class="btn ghost" href="https://elliot-jung-17.github.io/pendulum-lab/paper/">Read the mini-paper</a>
+      <span class="note">Headless core · typed library · research CLI</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== VALIDATION ============================== -->
+<section class="band solid" id="validation">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">Validation &amp; Credibility</span>
+      <h2 data-rise>Numbers you can check — not claims you must trust.</h2>
+      <p>Every integrator is cross-checked against closed-form, energy, and reference-method criteria, then externally cross-validated against an independent SciPy DOP853 reference for both the double and triple pendulum.</p>
+    </div>
+
+    <div class="valid-grid">
+      <div class="val-board reveal" data-wipe>
+        <div class="vb-head">
+          <span>Long-run energy drift · conservative double · T = 200 s</span>
+          <span class="pass"><i></i> 12/12 within envelope</span>
+        </div>
+        <table class="val-table">
+          <thead>
+            <tr><th>Integrator</th><th class="r">Order</th><th class="r">Max rel. drift |ΔE/E₀|</th><th></th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">Gragg-Bulirsch-Stoer</td><td class="r">adaptive</td><td class="r drift">8.97e-13</td><td><i class="val-bar" style="width:96px"></i></td></tr>
+            <tr><td class="name">Dormand-Prince 5(4)</td><td class="r">5</td><td class="r drift">3.79e-10</td><td><i class="val-bar" style="width:78px"></i></td></tr>
+            <tr><td class="name">Gauss-Legendre 4</td><td class="r">implicit</td><td class="r drift">9.34e-10</td><td><i class="val-bar" style="width:72px"></i></td></tr>
+            <tr><td class="name">RKF45 Adaptive</td><td class="r">adaptive</td><td class="r drift">8.29e-9</td><td><i class="val-bar" style="width:60px"></i></td></tr>
+            <tr><td class="name">Runge-Kutta 4</td><td class="r">4</td><td class="r drift">5.45e-8</td><td><i class="val-bar" style="width:48px"></i></td></tr>
+            <tr><td class="name">Implicit Midpoint</td><td class="r">implicit</td><td class="r drift">4.34e-5</td><td><i class="val-bar" style="width:30px"></i></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="val-side">
+        <div class="val-stat reveal">
+          <div class="big" data-count="959" data-decimals="0"></div>
+          <div class="cap">Unit tests · all green</div>
+          <p>Plus Chromium, Firefox, WebKit and mobile end-to-end suites, mutation-tested with a published Stryker aggregate.</p>
+        </div>
+        <div class="val-stat reveal">
+          <div class="big" data-count="6" data-decimals="0" data-prefix="~" data-suffix="e-14"></div>
+          <div class="cap">Agreement vs SciPy DOP853</div>
+          <p>Regular orbits agree to ~6e-14 over 20 s; chaotic orbits to the e^{λ₁t}-amplified tolerance floor.</p>
+        </div>
+        <div class="val-stat reveal">
+          <div class="big" data-count="1.0664" data-decimals="4"></div>
+          <div class="cap">Period-doubling onset A_PD</div>
+          <p>Engine-measured against the published value of 1.0663 — a literature anchor, not a fit.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reproducibility ledger -->
+    <div class="ledger reveal" data-wipe>
+      <div class="vb-head">
+        <span>The gate every change must pass</span>
+        <span class="pass"><i></i> enforced in CI</span>
+      </div>
+      <div class="ledger-rows">
+        <div class="ledger-row"><span class="k">verify</span><span class="v">CSP-safe lint → strict typecheck → module-size ratchet → 959 unit tests → result-count guard → docs sync</span></div>
+        <div class="ledger-row"><span class="k">browsers</span><span class="v">Playwright e2e on Chromium, mobile-Chrome, Firefox and WebKit, with visual-regression baselines per host</span></div>
+        <div class="ledger-row"><span class="k">memory</span><span class="v">Hard memory-regression gate against a committed browser-benchmark baseline</span></div>
+        <div class="ledger-row"><span class="k">evidence</span><span class="v">Reports attest their source commit; a reviewer console reads the machine-readable certification chain</span></div>
+        <div class="ledger-row"><span class="k">mutation</span><span class="v">Stryker mutation testing with a published aggregate score — the tests are tested</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== GUIDE ============================== -->
+<section class="band" id="guide">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">How It Works</span>
+      <h2 data-rise>Three steps to the edge of chaos.</h2>
+      <p>No install. No account. Open it in your browser, choose a workspace, run it, and export diagnostics anyone on earth can reproduce.</p>
+    </div>
+
+    <div class="steps" data-stagger>
+      <article class="step">
+        <span class="line"></span>
+        <span class="no">01</span>
+        <h3>Choose workspace &amp; system</h3>
+        <p>Pick Beginner, Student, or Research, then a system from double pendulum to N-link, driven, and elastic — and one of twelve integrators, each labeled with its order and character.</p>
+      </article>
+      <article class="step">
+        <span class="line"></span>
+        <span class="no">02</span>
+        <h3>Set parameters &amp; run</h3>
+        <p>Dial in initial conditions and dt, then watch the trajectory, energy drift, and residuals update live. Summon chaotic, periodic, or resonant regimes from presets in a single click.</p>
+      </article>
+      <article class="step">
+        <span class="line"></span>
+        <span class="no">03</span>
+        <h3>Diagnose &amp; export</h3>
+        <p>Run the Lyapunov spectrum, Poincaré sections, and bifurcation sweeps, then export a bit-reproducible research bundle — PNGs, CSVs, checksums, manifest.</p>
+      </article>
+    </div>
+
+    <div class="guide-foot reveal">
+      <a class="btn primary" href="https://elliot-jung-17.github.io/pendulum-lab/" data-app-link>Launch Simulation now <span class="arrow">→</span></a>
+      <span class="note">Runs in your browser · no install</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== LAUNCH ============================== -->
+<section class="band launch" id="launch">
+  <div class="wrap">
+    <span class="kicker center">Open the Engine</span>
+    <h2 class="display" data-rise><span class="grad">Release it. Watch it </span><span class="dissolve">diverge.</span></h2>
+    <p class="lede">The full simulator runs in your browser — twelve integrators, every analysis tab, reproducible to the bit. No install, no account. Just the unvarnished mathematics of chaos.</p>
+    <div class="launch-actions">
+      <a class="btn primary" href="https://elliot-jung-17.github.io/pendulum-lab/" data-app-link>Launch Simulation <span class="arrow">→</span></a>
+      <a class="btn ghost" href="https://elliot-jung-17.github.io/pendulum-lab/reviewer.html">Reviewer Console</a>
+      <a class="btn ghost" href="https://github.com/Elliot-Jung-17/pendulum-lab">Source on GitHub</a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="5" r="2.4" fill="#18d4f8"/>
+          <path d="M16 6.5 L23 16 L19 25" stroke="#18d4f8" stroke-width="1.4" stroke-linecap="round" opacity=".85"/>
+          <circle cx="23" cy="16" r="2" fill="#9d78ff"/>
+          <circle cx="19" cy="25" r="2.8" fill="#18d4f8"/>
+        </svg>
+      </span>
+      <span>
+        <span class="name">Pendulum Lab</span><br />
+        <span class="by">by Elliot Jung</span>
+      </span>
+    </div>
+    <div class="meta">
+      <a href="https://elliot-jung-17.github.io/pendulum-lab/">Launch app</a>
+      <a href="https://github.com/Elliot-Jung-17/pendulum-lab">GitHub</a>
+      <a href="https://elliot-jung-17.github.io/pendulum-lab/reviewer.html">Reviewer console</a>
+      <a href="https://elliot-jung-17.github.io/pendulum-lab/paper/">Mini-paper</a>
+    </div>
+    <div class="cite">MIT-licensed · <b>Cite this repository</b> · <a href="https://github.com/Elliot-Jung-17/pendulum-lab/blob/master/CITATION.cff" style="color:inherit">CITATION.cff</a></div>
+  </div>
+</footer>
+
+<script src="assets/main.js"></script>
+<script type="module" src="assets/scene.js"></script>
+</body>
+</html>
