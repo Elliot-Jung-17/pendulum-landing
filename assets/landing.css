@@ -294,9 +294,18 @@ section{ position:relative; z-index:2; }
 .band.solid{
   background:linear-gradient(180deg, transparent, rgba(8,11,24,.85) 12%, rgba(8,11,24,.9) 88%, transparent);
 }
-.sec-head{ max-width:780px; margin-bottom:56px; }
+.sec-head{ position:relative; max-width:780px; margin-bottom:56px; padding-bottom:26px; }
 .sec-head h2{ font-size:clamp(30px, 4.4vw, 58px); margin:18px 0 16px; }
 .sec-head p{ font-size:clamp(15px,1.4vw,18px); max-width:60ch; text-wrap:pretty; }
+/* a thin luminous rule sweeps across the section header as it scrolls in */
+.sec-head::after{
+  content:""; position:absolute; left:0; bottom:0; height:1px; width:min(560px, 90%);
+  transform:scaleX(0); transform-origin:left center;
+  background:linear-gradient(90deg, var(--cyan), var(--violet) 55%, transparent);
+  box-shadow:0 0 16px rgba(24,212,248,.5);
+  transition:transform 1.1s var(--ease) .15s;
+}
+.sec-head.lit::after{ transform:scaleX(1); }
 
 /* reveal-on-scroll base state (GSAP drives the rest) */
 .reveal{ opacity:0; transform:translateY(28px); }
@@ -858,6 +867,14 @@ body.cursor-active .cursor-glow{ opacity:1; }
 
 /* ---- DecryptedText: monospaced-ish scramble feel while resolving ----------*/
 [data-decrypt]{ font-variant-ligatures:none; }
+/* While a block is decoding, its ciphertext glows cyan, then settles. The glow
+   renders from the glyph alpha, so it lights up gradient (transparent-fill)
+   headings too. */
+.is-decrypting{
+  font-variant-ligatures:none;
+  text-shadow:0 0 16px rgba(24,212,248,.45), 0 0 32px rgba(157,120,255,.22);
+}
+.is-decrypting .grad, .is-decrypting .dissolve{ filter:brightness(1.12); }
 
 /* ---- MagicBento: spotlight, particles, ripple, border glow ----------------*/
 .mb-spotlight{

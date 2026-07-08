@@ -200,8 +200,6 @@ function bindInteraction() {
   window.addEventListener('pointerup', () => { dragging = false; canvas.style.cursor = 'grab'; });
 }
 
-window.__hero = { /* reserved */ };
-
 function onResize() {
   W = window.innerWidth; H = window.innerHeight;
   renderer.setSize(W, H); camera.aspect = W / H; camera.updateProjectionMatrix();
@@ -211,8 +209,11 @@ function onResize() {
 // ---- loop ------------------------------------------------------------------
 let last = performance.now();
 let auto = 0;
-function animate() {
-  requestAnimationFrame(animate);
+let rafId = 0;
+let running = false;
+let heroVisible = true;
+
+function renderFrame() {
   const now = performance.now();
   const dt = Math.min((now - last) / 1000, 0.05); last = now;
 
@@ -255,13 +256,59 @@ function animate() {
   window.__heroPainted = true;
 }
 
+// The render loop only runs while the hero is actually worth painting: it
+// stops when the tab is hidden or the hero has scrolled well out of view, and
+// resumes on return. This mirrors the orbit console's IntersectionObserver
+// discipline and keeps a long landing page from burning the GPU on a sculpture
+// nobody is looking at.
+function loop() {
+  if (!running) return;
+  rafId = requestAnimationFrame(loop);
+  renderFrame();
+}
+function startLoop() {
+  if (running) return;
+  running = true;
+  last = performance.now();
+  rafId = requestAnimationFrame(loop);
+}
+function stopLoop() {
+  running = false;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+}
+function syncPlayback() {
+  if (heroVisible && !document.hidden) startLoop();
+  else stopLoop();
+}
+
 try {
   if (staticHero) {
     if (canvas) canvas.style.display = 'none';
     document.body.classList.add(reduced ? 'reduced-motion-hero' : 'low-power-hero');
   } else {
     init();
-    animate();
+    renderFrame();          // guarantee one painted frame even if we boot hidden/parked
+    syncPlayback();         // then honour the real tab-visibility / scroll state
+
+    document.addEventListener('visibilitychange', syncPlayback);
+    const heroSection = document.querySelector('.hero');
+    if (heroSection && 'IntersectionObserver' in window) {
+      // Keep painting for ~two extra screens above the fold so the scroll-driven
+      // order→chaos morph finishes before the loop parks itself.
+      const io = new IntersectionObserver((entries) => {
+        heroVisible = entries.some((entry) => entry.isIntersecting);
+        syncPlayback();
+      }, { rootMargin: '150% 0px 0px 0px' });
+      io.observe(heroSection);
+    }
+
+    // Debug / capture hook: window.__hero.pause() freezes the sculpture so a
+    // still frame can be captured; resume() restores automatic playback.
+    window.__hero = {
+      pause() { stopLoop(); },
+      resume() { heroVisible = true; syncPlayback(); },
+      get running() { return running; },
+    };
   }
 }
 catch (err) {

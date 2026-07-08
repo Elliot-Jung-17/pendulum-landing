@@ -62,50 +62,128 @@
   }
 
   // ==========================================================================
-  // 2) DECRYPTED TEXT — scramble a heading into place when it scrolls in
+  // 2) DECRYPTED TEXT — structure-preserving scramble reveal.
+  //    When a heading or short label scrolls in, every text node inside it is
+  //    scrambled independently and then resolved left→right. Because we only
+  //    rewrite text-node values (never innerHTML), gradient spans, <br> line
+  //    breaks and inline <em> all survive. Every active reveal shares ONE
+  //    requestAnimationFrame ticker, so the whole page decodes smoothly.
   // ==========================================================================
-  const SCRAMBLE = '!<>-_\\/[]{}—=+*^?#01λθφΔΣ';
-  function scrambleReveal(el) {
-    if (el.__decrypted) return;
-    el.__decrypted = true;
-    const text = el.dataset.decryptText || el.textContent;
-    el.dataset.decryptText = text;
-    if (reduced) { el.textContent = text; return; }
+  const SCRAMBLE = '!<>-_\\/[]{}—=+*^?#01λθφΔΣπ§%';
+  const randGlyph = () => SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0];
+  const isSpace = (ch) => ch === ' ' || ch === '\n' || ch === '\t' || ch === ' ';
 
-    const revealed = new Set();
-    const total = text.length;
-    const speed = Number(el.dataset.decryptSpeed) || 34;
-    const perTick = Math.max(1, Math.round(total / 22)); // finish in ~22 ticks
-    let frame = 0;
+  // Never scramble text owned by another script: injected evidence numbers,
+  // the count-up telemetry, or the rotating typewriter line.
+  const DECRYPT_SKIP = '[data-count],[data-evidence],[data-evidence-count],[data-typetext],[data-no-decrypt]';
 
-    const timer = setInterval(() => {
-      frame++;
-      // reveal a few more characters each tick, left→right
-      for (let k = 0; k < perTick; k++) revealed.add(revealed.size);
-      let out = '';
-      for (let i = 0; i < total; i++) {
-        const c = text[i];
-        if (c === ' ' || revealed.has(i)) out += c;
-        else out += SCRAMBLE[(Math.random() * SCRAMBLE.length) | 0];
+  function collectTextNodes(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        const parent = node.parentElement;
+        if (parent && parent.closest(DECRYPT_SKIP)) return NodeFilter.FILTER_REJECT;
+        return NodeFilter.FILTER_ACCEPT;
       }
-      el.textContent = out;
-      if (revealed.size >= total) { clearInterval(timer); el.textContent = text; }
-    }, speed);
+    });
+    const nodes = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push({ node: n, base: n.nodeValue });
+    return nodes;
   }
 
-  function initDecrypt() {
-    const targets = $$('[data-decrypt]');
-    if (!targets.length) return;
-    if (!('IntersectionObserver' in window) || reduced) {
-      targets.forEach((el) => { el.textContent = el.dataset.decryptText || el.textContent; });
-      return;
+  const scrambleJobs = [];
+  let scrambleTicking = false;
+
+  function renderScramble(job, revealChars) {
+    let pos = 0;
+    for (const item of job.nodes) {
+      const base = item.base;
+      let out = '';
+      for (let i = 0; i < base.length; i++) {
+        const ch = base[i];
+        if (isSpace(ch)) { out += ch; pos++; continue; }
+        out += pos < revealChars ? ch : randGlyph();
+        pos++;
+      }
+      item.node.nodeValue = out;
     }
+  }
+
+  function tickScramble(now) {
+    for (let i = scrambleJobs.length - 1; i >= 0; i--) {
+      const job = scrambleJobs[i];
+      if (now < job.start) { continue; }              // held fully scrambled
+      const t = Math.min(1, (now - job.start) / job.duration);
+      renderScramble(job, Math.floor(job.total * t));
+      if (t >= 1) {
+        for (const item of job.nodes) item.node.nodeValue = item.base; // exact restore
+        job.el.classList.remove('is-decrypting');
+        job.el.classList.add('is-decrypted');
+        scrambleJobs.splice(i, 1);
+      }
+    }
+    if (scrambleJobs.length) requestAnimationFrame(tickScramble);
+    else scrambleTicking = false;
+  }
+
+  function startScramble(el, delay) {
+    if (el.__decrypted) return;
+    el.__decrypted = true;
+    const nodes = collectTextNodes(el);
+    if (!nodes.length) return;
+    let total = 0;
+    for (const item of nodes) {
+      for (let i = 0; i < item.base.length; i++) if (!isSpace(item.base[i])) total++;
+    }
+    if (!total) return;
+    const job = {
+      el, nodes, total,
+      start: performance.now() + (delay || 0),
+      duration: Math.min(1000, 340 + total * 11),
+    };
+    el.classList.add('is-decrypting');
+    renderScramble(job, 0);                            // show ciphertext immediately
+    scrambleJobs.push(job);
+    if (!scrambleTicking) { scrambleTicking = true; requestAnimationFrame(tickScramble); }
+  }
+
+  // Short, punchy text gets the full scramble treatment across the whole page.
+  const SCRAMBLE_TARGETS = [
+    '[data-decrypt]',
+    '.hero-copy .kicker', '.hero-copy .display',
+    '.sec-head .kicker', '.sec-head h2',
+    '.console-copy .kicker', '.console-copy h2',
+    '.preview-copy .kicker', '.preview-copy h2',
+    '.science-grid .kicker', '.science-grid h2',
+    '.cap-card h3', '.mode-card h3', '.frontier-card h3', '.step h3',
+    '.mode-tag', '.recipe-card strong',
+    '.launch .kicker', '.launch .display',
+    '.val-stat .cap', '.val-board .vb-head > span', '.ledger .vb-head > span',
+    '.diverge-tag span'
+  ].join(',');
+
+  function initDecrypt() {
+    const targets = Array.from(new Set($$(SCRAMBLE_TARGETS)));
+    if (!targets.length || reduced || !('IntersectionObserver' in window)) return;
+
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
-        if (en.isIntersecting) { scrambleReveal(en.target); io.unobserve(en.target); }
+        if (!en.isIntersecting) return;
+        io.unobserve(en.target);
+        startScramble(en.target, 0);
       });
-    }, { threshold: 0.25, rootMargin: '0px 0px -8% 0px' });
-    targets.forEach((el) => io.observe(el));
+    }, { threshold: 0.2, rootMargin: '0px 0px -6% 0px' });
+
+    // Elements already on screen at load (the hero) decode in a quick cascade
+    // instead of all firing on the same frame.
+    const vh = window.innerHeight;
+    let boot = 0;
+    targets.forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (r.top < vh && r.bottom > 0) startScramble(el, (boot++) * 120);
+      else io.observe(el);
+    });
   }
 
   // ==========================================================================

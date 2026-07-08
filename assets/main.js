@@ -123,15 +123,30 @@
   if (window.gsap && window.ScrollTrigger && !reduced) {
     gsap.registerPlugin(ScrollTrigger);
 
+    // Hero copy materializes on load. We animate opacity + blur ONLY — the
+    // transform of every [data-mouse] element is owned by the parallax engine,
+    // so touching y/x here would fight it. The kicker and display decode via the
+    // scramble engine; these lines focus in underneath that.
+    const heroIntro = ['.hero-copy .lede', '.hero-actions', '.hero-type-line'];
+    gsap.set(heroIntro, { opacity: 0, filter: 'blur(14px)' });
+    gsap.to('.hero-copy .lede', { opacity: 1, filter: 'blur(0px)', duration: 1.1, ease: 'power2.out', delay: 0.35 });
+    gsap.to('.hero-actions', { opacity: 1, filter: 'blur(0px)', duration: 1.0, ease: 'power2.out', delay: 0.55 });
+    gsap.to('.hero-type-line', { opacity: 1, filter: 'blur(0px)', duration: 1.0, ease: 'power2.out', delay: 0.7 });
+
     // hero dissolves as you descend — cinematic exit
     gsap.to('.hero .wrap', {
       yPercent: -12, opacity: 0, ease: 'none',
       scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true },
     });
 
+    // section headers light their sweep-rule as they arrive
+    $$('.sec-head').forEach((el) => {
+      ScrollTrigger.create({ trigger: el, start: 'top 82%', once: true, onEnter: () => el.classList.add('lit') });
+    });
+
     $$('.reveal').forEach((el) => {
-      gsap.fromTo(el, { opacity: 0, y: 40 }, {
-        opacity: 1, y: 0, duration: 1, ease: 'power3.out',
+      gsap.fromTo(el, { opacity: 0, y: 40, filter: 'blur(12px)' }, {
+        opacity: 1, y: 0, filter: 'blur(0px)', duration: 1, ease: 'power3.out',
         scrollTrigger: { trigger: el, start: 'top 86%', once: true },
       });
     });
@@ -152,10 +167,10 @@
       });
     });
 
-    // staggered card grids
+    // staggered card grids materialize with a focus-in blur
     $$('[data-stagger]').forEach((group) => {
-      gsap.fromTo(group.children, { opacity: 0, y: 48, scale: .95 }, {
-        opacity: 1, y: 0, scale: 1, duration: .9, ease: 'power3.out', stagger: .09,
+      gsap.fromTo(group.children, { opacity: 0, y: 48, scale: .95, filter: 'blur(10px)' }, {
+        opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', duration: .9, ease: 'power3.out', stagger: .09,
         scrollTrigger: { trigger: group, start: 'top 82%', once: true },
       });
     });
@@ -180,7 +195,8 @@
         scrollTrigger: { trigger: path.closest('.diverge-stage'), start: 'top 80%', end: 'bottom 55%', scrub: 0.6 } });
     });
   } else {
-    $$('.reveal, [data-wipe], [data-rise]').forEach((el) => { el.style.opacity = 1; el.style.clipPath = 'none'; el.style.transform = 'none'; });
+    $$('.reveal, [data-wipe], [data-rise], .hero-copy .lede, .hero-actions, .hero-type-line').forEach((el) => { el.style.opacity = 1; el.style.clipPath = 'none'; el.style.transform = 'none'; el.style.filter = 'none'; });
+    $$('.sec-head').forEach((el) => el.classList.add('lit'));
     $$('.draw-path').forEach((p) => { p.style.strokeDasharray = 'none'; p.style.strokeDashoffset = 0; });
   }
 
