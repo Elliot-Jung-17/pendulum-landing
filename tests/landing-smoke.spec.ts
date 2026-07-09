@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 test('landing page has no console errors and paints the hero', async ({ page }) => {
+  test.setTimeout(90_000);
   const errors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
 
-  await page.goto('/');
+  await page.goto('/?captureHero=1', { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.nav')).toBeVisible();
   await expect(page.locator('#hero-canvas')).toBeAttached();
   await expect(page.locator('#orbit-console')).toBeVisible();

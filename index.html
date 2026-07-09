@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pendulum Lab — The Double-Pendulum Chaos Engine</title>
-<meta name="description" content="A framework-free TypeScript engine and browser laboratory for nonlinear pendulum dynamics — twelve order-certified integrators, full Lyapunov diagnostics, WebGPU-certified chaos pipelines, and bit-reproducible research bundles. 971 unit tests, validated against SciPy and published literature." />
+<meta name="description" content="A framework-free TypeScript engine and browser laboratory for nonlinear pendulum dynamics — thirteen primary order-certified integrators, full Lyapunov diagnostics, CPU-oracle-gated WebGPU pipelines, and bit-reproducible research bundles. 982 unit tests, validated against SciPy and published literature." />
 <meta property="og:title" content="Pendulum Lab — The Double-Pendulum Chaos Engine" />
 <meta property="og:description" content="Order, undone by chaos. A validated chaotic-pendulum research laboratory that runs entirely in your browser." />
 <meta property="og:type" content="website" />
@@ -29,9 +29,6 @@
   }
 }
 </script>
-<!-- GSAP + ScrollTrigger for scroll choreography -->
-<script src="./assets/vendor/gsap/gsap.min.js"></script>
-<script src="./assets/vendor/gsap/ScrollTrigger.min.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -109,8 +106,8 @@
         </h1>
         <p class="lede" data-mouse="9">
           A framework-free TypeScript engine for nonlinear pendulum dynamics —
-          twelve integrators measured at their theoretical order, full-spectrum
-          Lyapunov diagnostics, WebGPU pipelines certified against CPU oracles,
+          thirteen primary integrators measured at their theoretical order, full-spectrum
+          Lyapunov diagnostics, WebGPU paths promoted only after CPU-oracle checks,
           and results reproducible to the bit. Determinism, engineered for the
           very edge of predictability.
         </p>
@@ -122,7 +119,7 @@
         <div class="hero-type-line" data-mouse="7" aria-hidden="true">
           <span class="ty-dot"></span>
           <span data-typetext data-type-speed="46" data-pause="1700"
-                data-phrases='["Twelve integrators, measured at order.","Full-spectrum Lyapunov diagnostics.","WebGPU kernels, oracle-certified.","Reproducible to the bit."]'></span>
+                data-phrases='["Thirteen primary integrators, measured at order.","Full-spectrum Lyapunov diagnostics.","WebGPU kernels gated by CPU oracles.","Reproducible to the bit."]'></span>
         </div>
       </div>
 
@@ -141,10 +138,10 @@
         <div class="spec-card" data-tilt>
           <div class="spec-head">
             <span class="label">Credibility</span>
-            <span class="live-dot"><i></i> <span data-evidence="tests.passLabel">971 / 971 pass</span></span>
+            <span class="live-dot"><i></i> <span data-evidence="tests.passLabel">982 / 982 pass</span></span>
           </div>
           <div class="spec-row"><span class="k">vs SciPy DOP853</span><span class="v cy" data-evidence="validation.scipyAgreement">~6e-14</span></div>
-          <div class="spec-row"><span class="k">unit tests</span><span class="v" data-evidence="tests.greenLabel">971 green</span></div>
+          <div class="spec-row"><span class="k">unit tests</span><span class="v" data-evidence="tests.greenLabel">982 green</span></div>
           <div class="spec-row"><span class="k">period-doubling A</span><span class="v" data-evidence="validation.periodDoubling">1.0664</span></div>
           <div class="spec-row"><span class="k">mutation tested</span><span class="v vi">Stryker aggregate</span></div>
         </div>
@@ -178,6 +175,10 @@
         <div class="console-readout"><span>drift</span><strong data-orbit-readout="drift">0.00 px</strong></div>
         <div class="console-readout"><span>trace</span><strong data-orbit-readout="trace">warming</strong></div>
         <div class="console-readout"><span>mode</span><strong data-orbit-readout="mode">live</strong></div>
+      </div>
+      <div class="console-actions">
+        <a class="btn primary sm" href="https://elliot-jung-17.github.io/pendulum-lab/?audience=beginner&tab=lab&sysType=double&th1=2.18&th2=2.64&iw1=0&iw2=0&m1=1&m2=1&l1=1&l2=1&g=9.81" data-app-link>Open This State <span class="arrow">→</span></a>
+        <a class="btn ghost sm" href="https://elliot-jung-17.github.io/pendulum-lab/reviewer.html">Reviewer Ledger</a>
       </div>
     </div>
 
@@ -217,7 +218,13 @@
       </div>
     </div>
     <figure class="app-preview reveal" data-wipe>
-      <img src="assets/app-preview.png" alt="Pendulum Lab app showing the simulation canvas, control rail, and research interface" loading="eager" />
+      <picture>
+        <source
+          type="image/webp"
+          srcset="assets/app-preview-640.webp 640w, assets/app-preview-960.webp 960w, assets/app-preview.webp 1280w"
+          sizes="(max-width: 760px) 92vw, (max-width: 1180px) 54vw, 650px" />
+        <img src="assets/app-preview.png" width="1280" height="820" sizes="(max-width: 760px) 92vw, (max-width: 1180px) 54vw, 650px" alt="Pendulum Lab app showing the simulation canvas, control rail, and research interface" loading="lazy" decoding="async" fetchpriority="low" />
+      </picture>
       <figcaption>
         <span>App snapshot</span>
         <a href="assets/walkthrough-30s.gif">30-second walkthrough GIF</a>
@@ -296,9 +303,9 @@
       <article class="cap-card">
         <span class="idx">01</span>
         <span class="glyph"><svg viewBox="0 0 24 24"><path d="M3 17c3-8 6-8 9 0s6 8 9 0"/><circle cx="3" cy="17" r="1.4"/><circle cx="21" cy="17" r="1.4"/></svg></span>
-        <h3>Twelve integrators</h3>
-        <p>Euler through RK4, embedded RKF45 &amp; Dormand-Prince 5(4), Gauss-Legendre 4/6, Yoshida-4, Gragg-Bulirsch-Stoer, and L-stable TR-BDF2 — each measured at its theoretical order, plus a full-Newton implicit midpoint with condition-number diagnostics.</p>
-        <div class="tags"><span class="tag">RK4</span><span class="tag">DOPRI5</span><span class="tag">GBS</span><span class="tag">TR-BDF2</span></div>
+        <h3>Thirteen primary integrators</h3>
+        <p>Euler through RK4, embedded RKF45, Dormand-Prince 5(4), DOP853 8(5,3), Gauss-Legendre 4/6, Yoshida-4, Gragg-Bulirsch-Stoer, and L-stable TR-BDF2 — each measured at its theoretical order, plus a full-Newton implicit midpoint with condition-number diagnostics.</p>
+        <div class="tags"><span class="tag">RK4</span><span class="tag">DOP853</span><span class="tag">GBS</span><span class="tag">TR-BDF2</span></div>
       </article>
 
       <article class="cap-card">
@@ -336,7 +343,7 @@
       <article class="cap-card">
         <span class="idx">06</span>
         <span class="glyph"><svg viewBox="0 0 24 24"><path d="M13 2 L4 14 H11 L10 22 L20 9 H13 Z"/></svg></span>
-        <h3>Certified WebGPU scale</h3>
+        <h3>CPU-oracle-gated WebGPU scale</h3>
         <p>Heavy chaos jobs run in a typed Web Worker with a priority queue, checkpoint / resume, and graceful fallback — and the WebGPU ensemble, full-spectrum, CLV, and FTLE kernels are promoted only after passing a same-run CPU f64 oracle comparison.</p>
         <div class="tags"><span class="tag">worker V2</span><span class="tag">WebGPU</span><span class="tag">CPU oracle</span></div>
       </article>
@@ -471,7 +478,7 @@
 
       <div class="val-side">
         <div class="val-stat reveal">
-          <div class="big" data-count="971" data-decimals="0" data-evidence-count="tests.passed"></div>
+          <div class="big" data-count="982" data-decimals="0" data-evidence-count="tests.passed"></div>
           <div class="cap">Unit tests · all green</div>
           <p>Plus Chromium, Firefox, WebKit and mobile end-to-end suites, mutation-tested with a published Stryker aggregate.</p>
         </div>
@@ -495,7 +502,7 @@
         <span class="pass"><i></i> enforced in CI</span>
       </div>
       <div class="ledger-rows">
-        <div class="ledger-row"><span class="k">verify</span><span class="v" data-evidence="ledger.verify">CSP-safe lint → strict typecheck → module-size ratchet → 971 unit tests → result-count guard → docs sync</span></div>
+        <div class="ledger-row"><span class="k">verify</span><span class="v" data-evidence="ledger.verify">CSP-safe lint → strict typecheck → module-size ratchet → 982 unit tests → result-count guard → docs sync</span></div>
         <div class="ledger-row"><span class="k">browsers</span><span class="v">Playwright e2e on Chromium, mobile-Chrome, Firefox and WebKit, with visual-regression baselines per host</span></div>
         <div class="ledger-row"><span class="k">memory</span><span class="v">Hard memory-regression gate against a committed browser-benchmark baseline</span></div>
         <div class="ledger-row"><span class="k">evidence</span><span class="v">Reports attest their source commit; a reviewer console reads the machine-readable certification chain</span></div>
@@ -519,7 +526,7 @@
         <span class="line"></span>
         <span class="no">01</span>
         <h3>Choose workspace &amp; system</h3>
-        <p>Pick Beginner, Student, or Research, then a system from double pendulum to N-link, driven, and elastic — and one of twelve integrators, each labeled with its order and character.</p>
+        <p>Pick Beginner, Student, or Research, then a system from double pendulum to N-link, driven, and elastic — and one of thirteen primary integrators, each labeled with its order and character.</p>
       </article>
       <article class="step">
         <span class="line"></span>
@@ -547,7 +554,7 @@
   <div class="wrap">
     <span class="kicker center">Open the Engine</span>
     <h2 class="display" data-rise><span class="grad">Release it. Watch it </span><span class="dissolve">diverge.</span></h2>
-    <p class="lede">The full simulator runs in your browser — twelve integrators, every analysis tab, reproducible to the bit. No install, no account. Just the unvarnished mathematics of chaos.</p>
+    <p class="lede">The full simulator runs in your browser — thirteen primary integrators, every analysis tab, reproducible to the bit. No install, no account. Just the unvarnished mathematics of chaos.</p>
     <div class="launch-actions">
       <a class="btn primary" href="https://elliot-jung-17.github.io/pendulum-lab/?tab=lab" data-app-link>Open Lab <span class="arrow">→</span></a>
       <a class="btn ghost" href="https://elliot-jung-17.github.io/pendulum-lab/?tab=lab&quality=performance" data-app-link>Try Performance Mode</a>
@@ -585,9 +592,10 @@
   </div>
 </footer>
 
-<script src="assets/orbit-console.js"></script>
-<script src="assets/main.js"></script>
-<script src="assets/reactbits.js"></script>
-<script type="module" src="assets/scene.js"></script>
+<script defer src="./assets/vendor/gsap/gsap.min.js"></script>
+<script defer src="./assets/vendor/gsap/ScrollTrigger.min.js"></script>
+<script defer src="assets/orbit-console.js"></script>
+<script defer src="assets/main.js"></script>
+<script defer src="assets/reactbits.js"></script>
 </body>
 </html>

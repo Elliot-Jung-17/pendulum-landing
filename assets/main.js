@@ -53,6 +53,38 @@
     .then(applyEvidence)
     .catch(() => {});
 
+  // ---- Deferred hero scene --------------------------------------------------
+  const mainScriptUrl = document.currentScript?.src || new URL('assets/main.js', window.location.href).href;
+  const sceneUrl = new URL('scene.js', mainScriptUrl).href;
+  const captureHero = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+  const reducedData = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-data: reduce)').matches;
+  const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2;
+  let heroSceneRequested = false;
+  function requestHeroScene() {
+    if (heroSceneRequested) return;
+    heroSceneRequested = true;
+    if (!captureHero && (reduced || reducedData || lowMemory)) {
+      document.body.classList.add('reduced-motion-hero');
+      window.__heroPainted = true;
+      return;
+    }
+    import(sceneUrl).catch(() => {
+      document.body.classList.add('no-webgl');
+      window.__heroPainted = true;
+    });
+  }
+  if (captureHero) {
+    requestHeroScene();
+  } else {
+    const intentOptions = { once: true, passive: true };
+    window.addEventListener('pointermove', requestHeroScene, intentOptions);
+    window.addEventListener('pointerdown', requestHeroScene, intentOptions);
+    window.addEventListener('touchstart', requestHeroScene, intentOptions);
+    window.addEventListener('scroll', requestHeroScene, intentOptions);
+    window.addEventListener('keydown', requestHeroScene, { once: true });
+    window.addEventListener('load', () => window.setTimeout(requestHeroScene, 9000), { once: true });
+  }
+
   // ---- NAV state, scrim, scroll progress ----------------------------------
   const nav = $('.nav');
   const scrim = $('.hero-scrim');

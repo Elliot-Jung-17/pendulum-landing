@@ -26,8 +26,8 @@ browser laboratory for nonlinear pendulum dynamics.
   files so GitHub Pages does not depend on runtime CDN availability.
 - `tests/landing-smoke.spec.ts` - Playwright smoke test for hero paint, console
   paint, mobile CTA bounds, and asset availability.
-- `scripts/check-static-assets.mjs` - local asset/link, evidence schema, and
-  external-font guard.
+- `scripts/check-static-assets.mjs` - local asset/link, evidence schema/freshness,
+  mojibake, CSP-warning, and external-font guard.
 - `.github/workflows/landing-ci.yml` - smoke, static check, and Lighthouse audit.
 
 There is no build step. Serve the folder statically or open `index.html`
@@ -72,7 +72,8 @@ build -> evidence sync -> landing check/smoke -> tag/release.
   `.gitignore`.
 - If main-lab validation numbers change, refresh `assets/evidence-summary.json`
   from the Pendulum Lab repository with `npm run evidence:summary` in the main
-  repo before publishing.
+  repo before publishing; CI can compare the two by setting
+  `PENDULUM_LAB_EVIDENCE_PATH`.
 - When adding new sections, keep the first viewport anchored on the product and
   leave a visible hint of the next section below the hero.
 - CTA links should remain direct actions such as Open Lab, Try Performance Mode,

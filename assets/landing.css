@@ -243,7 +243,16 @@ section{ position:relative; z-index:2; }
 }
 .hero .wrap{ position:relative; z-index:3; }
 .hero-grid{ display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center; }
-.hero-copy{ max-width:620px; }
+.hero-copy{ max-width:620px; position:relative; isolation:isolate; }
+.hero-copy::before{
+  content:"";
+  position:absolute;
+  inset:-28px -54px -24px -32px;
+  z-index:-1;
+  pointer-events:none;
+  background:linear-gradient(90deg, rgba(5,6,15,.82), rgba(5,6,15,.46) 52%, transparent);
+  filter:blur(2px);
+}
 .hero-copy .display{ margin:22px 0 24px; }
 .hero-actions{ display:flex; gap:14px; margin-top:34px; flex-wrap:wrap; }
 
@@ -580,6 +589,12 @@ body.cursor-active .cursor-glow{ opacity:1; }
 .console-readout:nth-child(2) strong{ color:#ffbe55; }
 .console-readout:nth-child(3) strong{ color:#34e88a; }
 .console-readout:nth-child(4) strong{ color:#ff5f8f; }
+.console-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:20px;
+}
 
 .orbit-console{
   position:relative;
@@ -660,8 +675,11 @@ body.cursor-active .cursor-glow{ opacity:1; }
   background:rgba(6,8,18,.72);
   box-shadow:0 42px 110px -52px #000, 0 0 52px -30px rgba(24,212,248,.5), inset 0 1px 0 rgba(255,255,255,.07);
 }
+.app-preview picture,
 .app-preview img{
   display:block; width:100%;
+}
+.app-preview img{
   aspect-ratio:16/10; object-fit:cover; object-position:left top;
 }
 .app-preview figcaption{
@@ -817,11 +835,21 @@ body.cursor-active .cursor-glow{ opacity:1; }
   .cap-grid{ grid-template-columns:1fr; }
   .frontier-grid{ grid-template-columns:1fr; }
   .hero-actions{ flex-direction:column; align-items:stretch; }
+  .hero-copy::before{
+    inset:-18px -14px -18px;
+    background:linear-gradient(180deg, rgba(5,6,15,.94), rgba(5,6,15,.74) 62%, rgba(5,6,15,.28));
+    filter:none;
+  }
+  .lede{
+    color:#d4e2f5;
+    text-shadow:0 1px 16px rgba(0,0,0,.95), 0 0 26px rgba(5,6,15,.75);
+  }
   .btn{ justify-content:center; }
   .brand .by{ display:none; }
   .recipe-card{ grid-template-columns:1fr; }
   .recipe-card span{ grid-row:auto; }
   .console-readouts{ grid-template-columns:1fr; }
+  .console-actions{ flex-direction:column; align-items:stretch; }
   .console-copy h2{ font-size:32px; }
   .orbit-console{ padding:8px; }
   .orbit-console::before{ inset:8px; }

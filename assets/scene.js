@@ -18,6 +18,7 @@ const VI = new THREE.Color('#9d78ff');
 const canvas = document.getElementById('hero-canvas');
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const reducedData = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-data: reduce)').matches;
+const compactHero = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 560px), (pointer: coarse)').matches;
 const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2;
 const staticHero = reduced || reducedData || lowMemory;
 if (canvas) canvas.setAttribute('aria-hidden', 'true');
@@ -26,7 +27,7 @@ let renderer, scene, camera, composer, bloom;
 let pivot, ribbon, coreLine, particles, light1, light2;
 let W = window.innerWidth, H = window.innerHeight;
 
-const N = reduced ? 150 : 260;          // points along the sculpture
+const N = reduced ? 120 : compactHero ? 180 : 260;          // points along the sculpture
 let ordered = [], chaos = [];            // two baked target shapes (Vector3[])
 let morph = 0, morphTarget = 0;          // 0 = order, 1 = chaos
 let lastBuilt = -1;
@@ -126,9 +127,10 @@ function buildRibbon(t) {
 function init() {
   bakeShapes();
 
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+  const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: !compactHero, alpha: true, preserveDrawingBuffer: captureMode, powerPreference: 'high-performance' });
   renderer.setSize(W, H);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactHero ? 1.25 : 1.6));
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.08;
 
@@ -167,7 +169,7 @@ function init() {
 }
 
 function buildParticles() {
-  const M = reduced ? 700 : 1900;
+  const M = reduced ? 500 : compactHero ? 900 : 1900;
   const pos = new Float32Array(M * 3), col = new Float32Array(M * 3);
   for (let i = 0; i < M; i++) {
     const r = 5 + Math.random() * 18;
