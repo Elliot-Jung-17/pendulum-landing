@@ -113,6 +113,25 @@
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
 
+  // ---- Scrollspy: mark the nav link whose section owns the viewport --------
+  const spyLinks = $$('.nav-links a[href^="#"]');
+  if (spyLinks.length && 'IntersectionObserver' in window) {
+    const setCurrent = (id) => spyLinks.forEach((a) => {
+      if (a.getAttribute('href') === '#' + id) a.setAttribute('aria-current', 'true');
+      else a.removeAttribute('aria-current');
+    });
+    const spy = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((e) => e.isIntersecting)
+        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setCurrent(visible.target.id);
+    }, { rootMargin: '-38% 0px -52% 0px', threshold: [0, 0.25, 0.5] });
+    spyLinks.forEach((a) => {
+      const section = document.getElementById(a.getAttribute('href').slice(1));
+      if (section) spy.observe(section);
+    });
+  }
+
   // ---- Mouse engine: spotlight + layered parallax + tilt ------------------
   const glow = $('.cursor-glow');
   const parallaxEls = $$('[data-mouse]').map((el) => ({ el, depth: parseFloat(el.dataset.mouse) || 12 }));
