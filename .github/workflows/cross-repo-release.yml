@@ -71,12 +71,17 @@ jobs:
           }
       - run: node scripts/sync-kernel-manifest.mjs
       - run: npm run sync:changelog
+      # Static copy (meta description, OG alt text, no-JS fallbacks, Korean
+      # dictionary) and the count baked into the og-card pixels follow the
+      # dispatched evidence, so a release can never ship stale numbers.
+      - run: npm run sync:copy
+      - run: npx playwright install --with-deps chromium
+      - run: npm run assets:og-card
       - run: npm run build:ko
       - name: Static, accessibility, and browser gate
         env:
           PENDULUM_EXPECTED_SOURCE_COMMIT: ${{ env.EXPECTED_SOURCE_COMMIT }}
         run: npm run check
-      - run: npx playwright install --with-deps chromium
       - run: npm run smoke
       - run: npm run lighthouse:lhci
       - name: Commit synchronized release evidence

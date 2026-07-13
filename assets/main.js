@@ -66,14 +66,15 @@
     if (typeof energy.profiledMethods === 'number') {
       setText('energy.profileLabel', `${energy.profiledMethods} methods profiled`);
     }
-    setText('ledger.verify', `CSP-safe lint → strict typecheck → module-size ratchet → ${tests.total} unit tests → result-count guard → evidence summary → docs sync`);
+    setText('ledger.verify', `CSP-safe lint → strict typecheck → module-size ratchet → ${tests.total} unit tests → result-count guard → docs sync → format gate`);
     setCount('tests.passed', tests.passed);
     setCount('validation.periodDoublingComputed', pd.computed);
 
     const meta = document.querySelector('meta[name="description"]');
     if (meta && typeof tests.total === 'number') {
       const content = meta.getAttribute('content') || '';
-      meta.setAttribute('content', content.replace(/\d+ unit tests/, `${tests.total} unit tests`));
+      // Comma-aware: the static description writes "1,090 unit tests".
+      meta.setAttribute('content', content.replace(/[\d,]+ unit tests/, `${tests.total.toLocaleString('en-US')} unit tests`));
     }
   }
 

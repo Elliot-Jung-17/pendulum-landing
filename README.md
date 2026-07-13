@@ -34,6 +34,10 @@ browser laboratory for nonlinear pendulum dynamics.
   `npm run sync:changelog`.
 - `assets/og-card.png`, `assets/favicon-32.png`, and
   `assets/apple-touch-icon.png` - dimension-checked social and bookmark assets.
+  The og-card is generated: `npm run assets:og-card` composites the text-free
+  base art (`assets/og-card-base.png`) with the live test count from the
+  evidence summary, and `assets/og-card-meta.json` records the numbers baked
+  into the pixels so the static gate fails when the card goes stale.
 - `assets/fonts/` - page-specific Pretendard Regular/Bold WOFF2 subsets plus
   the OFL. After Korean copy changes, install `fonttools brotli` once and run
   `npm run build:ko && npm run assets:fonts`; each font is capped at 60 KB.
@@ -51,6 +55,10 @@ browser laboratory for nonlinear pendulum dynamics.
   drift).
 - `scripts/sync-kernel-manifest.mjs` - realigns the demo-kernel manifest with
   freshly synced evidence (used by the evidence-sync workflow).
+- `scripts/sync-copy-counts.mjs` (`npm run sync:copy`) - rewrites every static
+  test-count occurrence (meta descriptions, OG/Twitter alt text, no-JS
+  fallback spans, the Korean dictionary) from the evidence summary; the
+  cross-repo release workflow runs it before the static gate.
 - `.github/workflows/landing-ci.yml` - smoke, static check, ko.html freshness,
   and Lighthouse audit.
 - `.github/workflows/node-compatibility.yml` - browser-free quick check on every
@@ -110,6 +118,10 @@ build -> evidence sync -> landing check/smoke -> tag/release.
   and commits. The manual path (`npm run evidence:summary` in the main repo,
   then `node scripts/sync-kernel-manifest.mjs` here) remains as local
   convenience; CI can compare the two by setting `PENDULUM_LAB_EVIDENCE_PATH`.
+- After fresh evidence changes the test count, run `npm run sync:copy`,
+  `npm run assets:og-card`, and `npm run build:ko` (the static gate lists the
+  exact command when something is stale; the cross-repo release workflow runs
+  all three automatically).
 - When adding new sections, keep the first viewport anchored on the product and
   leave a visible hint of the next section below the hero.
 - CTA links should remain direct actions such as Open Lab, Try Performance Mode,

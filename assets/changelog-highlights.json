@@ -1,20 +1,20 @@
 {
   "schemaVersion": "pendulum-changelog-highlights/v1",
-  "generatedAt": "2026-07-13T03:23:35.327Z",
-  "sourceCommit": "7bfe8d80ac4683c50ed144d62ee56a90e55e7b0a",
-  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/7bfe8d80ac4683c50ed144d62ee56a90e55e7b0a/CHANGELOG.md",
+  "generatedAt": "2026-07-13T05:07:13.260Z",
+  "sourceCommit": "01d6ec397a862df99c2ec0d5879b075eb8a2124e",
+  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/01d6ec397a862df99c2ec0d5879b075eb8a2124e/CHANGELOG.md",
   "highlights": [
+    {
+      "title": "Prettier is now an enforced gate, not just a config",
+      "summary": "npm run verify ends with format:check (after docs:sync, so generated rewrites are covered), and the PR/mainline workflows run it explicitly."
+    },
+    {
+      "title": "Testing strategy documented",
+      "summary": "docs/testing-strategy.md now describes the ordered verify gate, test tiers, oracle ladder, browser/visual/mutation/coverage gates, and what is deliberately out of headless scope (fixes the previously broken CONTRIBUTING.md link)."
+    },
     {
       "title": "Scoped publishing and coordinated releases",
       "summary": "Renamed the unpublished package coordinate to @elliotjung/pendulum-lab, added npm/JSR OIDC publication lanes, and made one simulator tag gate the landing evidence sync, smoke/Lighthouse pass, package publication, release assets, and …"
-    },
-    {
-      "title": "Portable, evidence-rich release assets",
-      "summary": "Replaced committed root standalone blobs with a compact SHA-256 manifest; the double-click HTML and workers are now generated and attached as release assets."
-    },
-    {
-      "title": "Broader verification gates",
-      "summary": "Added ESLint, Prettier, TypeScript 5.9 isolated declarations, Node 24/26 compatibility checks, required pinned Julia validation, CSS coverage, mutation-survivor triage, coverage badges, and benchmark history."
     }
   ]
 }

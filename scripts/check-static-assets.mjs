@@ -81,9 +81,11 @@ if (!Number.isFinite(evidence.tests?.total) || evidence.tests.total <= 0) {
 }
 checkEvidenceFreshness(evidence);
 checkChangelog(changelog, evidence);
+await checkCopyCounts(evidence);
 await checkPngDimensions('assets/favicon-32.png', 32, 32);
 await checkPngDimensions('assets/apple-touch-icon.png', 180, 180);
 await checkPngDimensions('assets/og-card.png', 1200, 630);
+await checkPngDimensions('assets/og-card-base.png', 1200, 630);
 await checkSitemap();
 await compareMainEvidenceIfProvided(evidence);
 await checkTextEncoding();
@@ -164,6 +166,59 @@ function checkChangelog(summary, evidenceSummary) {
   if (summary.sourceCommit !== evidenceSummary.provenance?.sourceCommit) failures.push('changelog sourceCommit does not match evidence sourceCommit');
   if (!/^https:\/\/github\.com\/elliotjung\/pendulum-lab\/blob\/[a-f0-9]{40}\/CHANGELOG\.md$/i.test(summary.sourceUrl ?? '')) {
     failures.push('changelog sourceUrl is missing or not commit-pinned');
+  }
+}
+
+/**
+ * Every static copy of the test count must equal the live evidence summary:
+ * the SEO meta descriptions and OG/Twitter alt text on both pages, the no-JS
+ * fallback spans, and the count baked into the og-card pixels (tracked via
+ * its sidecar assets/og-card-meta.json). Run `node scripts/sync-copy-counts.mjs`
+ * plus `npm run build:ko`, and `node scripts/generate-og-card.mjs`, to refresh.
+ */
+async function checkCopyCounts(summary) {
+  const total = summary.tests?.total;
+  const passed = summary.tests?.passed;
+  if (!Number.isInteger(total) || !Number.isInteger(passed)) return; // already failed above
+  const parseCount = (text) => Number.parseInt(text.replaceAll(',', ''), 10);
+  for (const pageName of CONTENT_PAGES) {
+    const html = await readFile(join(root, pageName), 'utf8').catch(() => null);
+    if (html === null) continue; // missing page already reported
+    const description = html.match(/<meta[^>]+name="description"[^>]+content="([^"]*)"/i)?.[1] ?? '';
+    const descCount = description.match(/([\d,]+) unit tests/)?.[1] ?? description.match(/([\d,]+)개 단위 테스트/)?.[1];
+    if (!descCount || parseCount(descCount) !== total) {
+      failures.push(`${pageName}: meta description test count (${descCount ?? 'none'}) != evidence total ${total} — run scripts/sync-copy-counts.mjs and npm run build:ko`);
+    }
+    for (const alt of [...html.matchAll(/(?:og|twitter):image:alt" content="([^"]*)"/g)].map((m) => m[1])) {
+      const altCount = alt.match(/([\d,]+) tests/)?.[1];
+      if (!altCount || parseCount(altCount) !== total) {
+        failures.push(`${pageName}: image alt test count (${altCount ?? 'none'}) != evidence total ${total} — run scripts/sync-copy-counts.mjs and npm run build:ko`);
+      }
+    }
+  }
+  const indexHtml = await readFile(join(root, 'index.html'), 'utf8').catch(() => '');
+  const fallbacks = [
+    [/data-evidence="tests\.passLabel">([^<]*)</, `${passed} / ${total} pass`],
+    [/data-evidence="tests\.greenLabel">([^<]*)</, `${passed} green`],
+    [/data-count="(\d+)" data-decimals="0" data-evidence-count="tests\.passed"/, String(passed)]
+  ];
+  for (const [pattern, expected] of fallbacks) {
+    const actual = indexHtml.match(pattern)?.[1];
+    if (actual !== expected) {
+      failures.push(`index.html: static fallback ${pattern} is "${actual ?? 'missing'}", expected "${expected}" — run scripts/sync-copy-counts.mjs`);
+    }
+  }
+  const ledgerCount = indexHtml.match(/data-evidence="ledger\.verify">[^<]*?([\d,]+) unit tests/)?.[1];
+  if (!ledgerCount || parseCount(ledgerCount) !== total) {
+    failures.push(`index.html: ledger.verify fallback count (${ledgerCount ?? 'none'}) != evidence total ${total} — run scripts/sync-copy-counts.mjs`);
+  }
+  const ogMeta = await readFile(join(root, 'assets', 'og-card-meta.json'), 'utf8')
+    .then((raw) => JSON.parse(raw.replace(/^\uFEFF/, '')))
+    .catch(() => null);
+  if (!ogMeta || ogMeta.schemaVersion !== 'pendulum-og-card/v1') {
+    failures.push('assets/og-card-meta.json missing or wrong schema — run node scripts/generate-og-card.mjs');
+  } else if (ogMeta.testsTotal !== total) {
+    failures.push(`og-card pixels quote ${ogMeta.testsTotal} tests but evidence says ${total} — run node scripts/generate-og-card.mjs`);
   }
 }
 
