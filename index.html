@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -30,8 +30,8 @@
      anything paints. ko.html is built by scripts/build-ko-page.mjs, so Korean
      visitors get a plain static page (no runtime translation cost). The CSP
      pins this block by hash; scripts/check-static-assets.mjs recomputes it. -->
-<script id="lang-boot">(function(){try{var q=new URLSearchParams(location.search);if(q.get("lang")==="en"){localStorage.setItem("pendulum-landing/lang","en");return}var s=null;try{s=localStorage.getItem("pendulum-landing/lang")}catch(e){}var ko=(navigator.languages||[navigator.language||""]).some(function(t){return String(t).toLowerCase().indexOf("ko")===0});if(q.get("lang")==="ko"||s==="ko"||(!s&&ko))location.replace("ko.html"+location.hash)}catch(e){}})();</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-GDtFcHQOJD3hSQ6Lhx2FU6602NjifYCO19uTPHghSnA='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
+<script id="lang-boot">(function(){document.documentElement.classList.remove("no-js");try{var q=new URLSearchParams(location.search);if(q.get("lang")==="en"){localStorage.setItem("pendulum-landing/lang","en");return}var s=null;try{s=localStorage.getItem("pendulum-landing/lang")}catch(e){}var ko=(navigator.languages||[navigator.language||""]).some(function(t){return String(t).toLowerCase().indexOf("ko")===0});if(q.get("lang")==="ko"||s==="ko"||(!s&&ko))location.replace("ko.html"+location.hash)}catch(e){}})();</script>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-ymSqYLl7rXygLfZS3sozKl35jW0CVidp7BU96LyH2dU='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E" />
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
@@ -97,6 +97,20 @@
   <div class="nav-cta">
     <a id="lang-toggle" class="lang-toggle" href="ko.html?lang=ko" hreflang="ko" aria-label="한국어로 전환">한국어</a>
     <a class="btn primary sm nav-launch" href="https://elliotjung.github.io/pendulum-lab/?tab=lab" data-app-link aria-label="Open Pendulum Lab simulation"><span class="cta-full">Open Lab</span><span class="cta-short">Open</span><span class="arrow">→</span></a>
+    <!-- Small-screen section menu. Pure details/summary so it works with CSP
+         and without JavaScript; main.js only adds close-on-navigate sugar. -->
+    <details class="nav-menu" id="nav-menu">
+      <summary aria-label="Section menu"><span class="nav-menu-bars" aria-hidden="true"><i></i><i></i><i></i></span></summary>
+      <div class="nav-menu-panel">
+        <a href="#science">Science</a>
+        <a href="#console">Console</a>
+        <a href="#capabilities">Platform</a>
+        <a href="#modes">Modes</a>
+        <a href="#frontier">Frontier</a>
+        <a href="#validation">Validation</a>
+        <a href="#guide">Guide</a>
+      </div>
+    </details>
   </div>
 </nav>
 

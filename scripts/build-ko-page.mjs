@@ -30,7 +30,7 @@ const root = dirname(dirname(fileURLToPath(import.meta.url)));
 // visiting it explicitly via ?lang=ko is a choice; a bare deep link only
 // sets the preference when none exists yet.
 const KO_BOOT =
-  '(function(){try{var q=new URLSearchParams(location.search);if(q.get("lang")==="ko"||!localStorage.getItem("pendulum-landing/lang"))localStorage.setItem("pendulum-landing/lang","ko")}catch(e){}})();';
+  '(function(){document.documentElement.classList.remove("no-js");try{var q=new URLSearchParams(location.search);if(q.get("lang")==="ko"||!localStorage.getItem("pendulum-landing/lang"))localStorage.setItem("pendulum-landing/lang","ko")}catch(e){}})();';
 
 const sha256 = (text) => createHash('sha256').update(text, 'utf8').digest('base64');
 

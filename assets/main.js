@@ -148,7 +148,7 @@
   function onScroll() {
     const sy = window.scrollY;
     nav.classList.toggle('scrolled', sy > 40);
-    if (scrim) scrim.style.opacity = Math.min(0.88, sy / (window.innerHeight * 0.9) * 0.88).toFixed(3);
+    if (scrim) scrim.style.opacity = Math.min(0.92, sy / (window.innerHeight * 0.9) * 0.92).toFixed(3);
     if (progress) {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       progress.style.width = (max > 0 ? (sy / max) * 100 : 0).toFixed(2) + '%';
@@ -156,6 +156,20 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  // ---- Small-screen menu: close after navigating (works without JS too) ----
+  const navMenu = $('#nav-menu');
+  if (navMenu) {
+    navMenu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => { navMenu.open = false; });
+    });
+    document.addEventListener('click', (event) => {
+      if (navMenu.open && event.target instanceof Node && !navMenu.contains(event.target)) navMenu.open = false;
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') navMenu.open = false;
+    });
+  }
 
   // ---- Scrollspy: mark the nav link whose section owns the viewport --------
   const spyLinks = $$('.nav-links a[href^="#"]');

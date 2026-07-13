@@ -67,6 +67,7 @@ body{
 ::selection{ background:rgba(24,212,248,.28); color:#fff; }
 
 a{ color:inherit; text-decoration:none; }
+a:focus-visible{ outline:2px solid var(--cyan); outline-offset:3px; border-radius:4px; }
 img{ max-width:100%; height:auto; }
 
 .skip-link{
@@ -247,6 +248,46 @@ html[lang="ko"]{
 html[lang="ko"] h1,html[lang="ko"] h2,html[lang="ko"] h3{ letter-spacing:-.01em; }
 html[lang="ko"] .nav-links a{ letter-spacing:.06em; }
 
+/* ---- SMALL-SCREEN SECTION MENU (details/summary; no JS required) -----------*/
+.nav-menu{ position:relative; display:none; }
+.nav-menu summary{
+  list-style:none; cursor:pointer;
+  display:grid; place-items:center;
+  width:40px; height:38px; border-radius:10px;
+  border:1px solid rgba(154,168,196,.35);
+  background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+  transition:border-color .25s var(--ease), background .25s var(--ease);
+}
+.nav-menu summary::-webkit-details-marker{ display:none; }
+.nav-menu summary:hover{ border-color:rgba(24,212,248,.6); background:rgba(24,212,248,.08); }
+.nav-menu summary:focus-visible{ outline:2px solid var(--cyan); outline-offset:2px; }
+.nav-menu-bars{ display:grid; gap:4px; }
+.nav-menu-bars i{
+  display:block; width:16px; height:1.6px; border-radius:2px;
+  background:var(--ink); opacity:.85;
+  transition:transform .25s var(--ease), opacity .25s var(--ease);
+}
+.nav-menu[open] summary{ border-color:rgba(24,212,248,.6); background:rgba(24,212,248,.1); }
+.nav-menu[open] .nav-menu-bars i:nth-child(1){ transform:translateY(5.6px) rotate(45deg); }
+.nav-menu[open] .nav-menu-bars i:nth-child(2){ opacity:0; }
+.nav-menu[open] .nav-menu-bars i:nth-child(3){ transform:translateY(-5.6px) rotate(-45deg); }
+.nav-menu-panel{
+  position:absolute; right:0; top:calc(100% + 12px);
+  min-width:210px; padding:8px; border-radius:14px;
+  display:grid; gap:2px;
+  border:1px solid var(--glass-stroke);
+  background:linear-gradient(170deg, rgba(13,19,36,.97), rgba(7,10,21,.98));
+  box-shadow:0 30px 70px -28px #000, 0 0 44px -22px rgba(24,212,248,.45), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.nav-menu-panel a{
+  padding:10px 12px; border-radius:9px;
+  font-family:var(--font-mono); font-size:12.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--text);
+  transition:color .2s var(--ease), background .2s var(--ease);
+}
+.nav-menu-panel a:hover{ color:var(--ink); background:rgba(24,212,248,.09); }
+@media (max-width:980px){ .nav-menu{ display:block; } }
+
 /* ---- BUTTONS ---------------------------------------------------------------*/
 .btn{
   --glow:rgba(24,212,248,.5);
@@ -371,9 +412,14 @@ html[lang="ko"] .nav-links a{ letter-spacing:.06em; }
 }
 .sec-head.lit::after{ transform:scaleX(1); }
 
-/* reveal-on-scroll base state (GSAP drives the rest) */
+/* reveal-on-scroll base state (GSAP drives the rest). With scripts disabled
+   or blocked nothing would ever lift the hidden state, so html.no-js — set in
+   the markup and removed by the first inline boot line — restores every
+   section for a fully readable static page. */
 .reveal{ opacity:0; transform:translateY(28px); }
 .reveal.in{ opacity:1; transform:none; transition:opacity .9s var(--ease), transform .9s var(--ease); }
+html.no-js .reveal{ opacity:1; transform:none; }
+html.no-js .sec-head::after{ transform:scaleX(1); }
 
 /* ============================================================================
    THE SCIENCE — divergence
@@ -403,7 +449,12 @@ html[lang="ko"] .nav-links a{ letter-spacing:.06em; }
 .lyap-readout{
   margin-top:30px; display:flex; gap:30px; flex-wrap:wrap;
 }
-.lyap-readout .stat{ display:flex; flex-direction:column; gap:3px; }
+.lyap-readout .stat{
+  display:flex; flex-direction:column; gap:3px;
+  padding-left:14px;
+  border-left:1px solid transparent;
+  border-image:linear-gradient(180deg, var(--cyan), rgba(231,200,135,.4), transparent) 1;
+}
 .lyap-readout .stat .num{ font-family:var(--font-display); font-weight:800; font-size:clamp(30px,3.4vw,46px); color:var(--ink); line-height:1; }
 .lyap-readout .stat .num .u{ font-size:.42em; color:var(--cyan); font-family:var(--font-mono); font-weight:500; margin-left:4px; }
 .lyap-readout .stat .lab{ font-family:var(--font-mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
@@ -492,14 +543,32 @@ html[lang="ko"] .nav-links a{ letter-spacing:.06em; }
   text-align:center; padding:clamp(110px,16vh,200px) 0;
   position:relative;
 }
+/* A quiet stage light behind the closing call — zero-cost static gradients. */
+.launch::before{
+  content:""; position:absolute; inset:0; pointer-events:none; z-index:-1;
+  background:
+    radial-gradient(560px 320px at 50% 38%, rgba(24,212,248,.1), transparent 66%),
+    radial-gradient(760px 420px at 50% 60%, rgba(157,120,255,.07), transparent 70%);
+}
+.launch::after{
+  content:""; position:absolute; left:50%; top:64px; width:min(420px,72vw); height:1px;
+  transform:translateX(-50%); pointer-events:none;
+  background:linear-gradient(90deg, transparent, rgba(24,212,248,.55), rgba(231,200,135,.4), transparent);
+}
 .launch .display{ margin:22px auto 10px; max-width:16ch; }
 .launch .lede{ margin:0 auto 38px; text-align:center; }
 .launch-actions{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
 
 .footer{
+  position:relative;
   border-top:1px solid var(--line);
   padding:40px 0 56px;
   margin-top:40px;
+}
+.footer::before{
+  content:""; position:absolute; left:0; top:-1px; height:1px; width:min(340px,46%);
+  background:linear-gradient(90deg, var(--cyan), rgba(231,200,135,.5), transparent);
+  opacity:.7;
 }
 .footer .wrap{ display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; }
 .footer .meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--muted); letter-spacing:.05em; display:flex; gap:22px; flex-wrap:wrap; }
