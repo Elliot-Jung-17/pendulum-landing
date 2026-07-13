@@ -1,8 +1,8 @@
 {
   "schemaVersion": "pendulum-changelog-highlights/v1",
-  "generatedAt": "2026-07-13T02:32:03.948Z",
-  "sourceCommit": "e520e1abc092dc9b1e4bfe702380d626a0de71f7",
-  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/e520e1abc092dc9b1e4bfe702380d626a0de71f7/CHANGELOG.md",
+  "generatedAt": "2026-07-13T02:45:13.796Z",
+  "sourceCommit": "95385f8354c129b6452113fa184276e1a8c1aa6b",
+  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/95385f8354c129b6452113fa184276e1a8c1aa6b/CHANGELOG.md",
   "highlights": [
     {
       "title": "Scoped publishing and coordinated releases",
