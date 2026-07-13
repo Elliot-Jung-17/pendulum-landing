@@ -115,7 +115,7 @@ jobs:
           cp index.html ko.html 404.html robots.txt sitemap.xml _headers _site/
           mkdir -p _site/assets
           rsync -a assets/ _site/assets/
-      - uses: actions/configure-pages@v5
+      - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
