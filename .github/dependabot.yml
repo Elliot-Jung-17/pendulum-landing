@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:00"
+      timezone: Asia/Seoul
+    groups:
+      browser-testing:
+        patterns:
+          - "@playwright/*"
+          - "@axe-core/*"
+      visual-runtime:
+        patterns:
+          - three
+          - gsap
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "03:30"
+      timezone: Asia/Seoul

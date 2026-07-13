@@ -17,6 +17,7 @@ const CY = new THREE.Color('#18d4f8');
 const VI = new THREE.Color('#9d78ff');
 
 const canvas = document.getElementById('hero-canvas');
+const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const reducedData = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-data: reduce)').matches;
 const compactHero = typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 560px), (pointer: coarse)').matches;
@@ -113,7 +114,6 @@ function buildRibbon(t) {
 function init() {
   bakeShapes();
 
-  const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
   renderer = new THREE.WebGLRenderer({ canvas, antialias: !compactHero, alpha: true, preserveDrawingBuffer: captureMode, powerPreference: 'high-performance' });
   renderer.setSize(W, H);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, compactHero ? 1.25 : 1.6));
@@ -157,14 +157,21 @@ function init() {
 function buildParticles() {
   const M = reduced ? 500 : compactHero ? 900 : 1900;
   const pos = new Float32Array(M * 3), col = new Float32Array(M * 3);
+  let seed = 0x51f15e;
+  const random = captureMode
+    ? () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 0x100000000;
+      }
+    : Math.random;
   for (let i = 0; i < M; i++) {
-    const r = 5 + Math.random() * 18;
-    const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    const r = 5 + random() * 18;
+    const th = random() * Math.PI * 2, ph = Math.acos(2 * random() - 1);
     pos[i * 3] = r * Math.sin(ph) * Math.cos(th) * 0.75;
-    pos[i * 3 + 1] = (Math.random() - 0.5) * 20;
+    pos[i * 3 + 1] = (random() - 0.5) * 20;
     pos[i * 3 + 2] = r * Math.cos(ph) - 4;
-    const cc = Math.random() < 0.5 ? CY : VI;
-    const f = 0.2 + Math.random() * 0.6;
+    const cc = random() < 0.5 ? CY : VI;
+    const f = 0.2 + random() * 0.6;
     col[i * 3] = cc.r * f; col[i * 3 + 1] = cc.g * f; col[i * 3 + 2] = cc.b * f;
   }
   const g = new THREE.BufferGeometry();
@@ -203,7 +210,7 @@ let heroVisible = true;
 
 function renderFrame() {
   const now = performance.now();
-  const dt = Math.min((now - last) / 1000, 0.05); last = now;
+  const dt = captureMode ? 0 : Math.min((now - last) / 1000, 0.05); last = now;
 
   const sy = window.scrollY || 0, vh = window.innerHeight || H;
   const heroP = Math.min(1, sy / (vh * 0.95));
@@ -276,11 +283,11 @@ try {
   } else {
     init();
     renderFrame();          // guarantee one painted frame even if we boot hidden/parked
-    syncPlayback();         // then honour the real tab-visibility / scroll state
+    if (!captureMode) syncPlayback(); // capture mode freezes the seeded first frame
 
-    document.addEventListener('visibilitychange', syncPlayback);
+    if (!captureMode) document.addEventListener('visibilitychange', syncPlayback);
     const heroSection = document.querySelector('.hero');
-    if (heroSection && 'IntersectionObserver' in window) {
+    if (!captureMode && heroSection && 'IntersectionObserver' in window) {
       // Keep painting for ~two extra screens above the fold so the scroll-driven
       // order→chaos morph finishes before the loop parks itself.
       const io = new IntersectionObserver((entries) => {

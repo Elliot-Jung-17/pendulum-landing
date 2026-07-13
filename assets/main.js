@@ -8,8 +8,26 @@
   'use strict';
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  if (captureMode) document.body.classList.add('capture-mode');
+
+  // ---- Privacy-friendly referral attribution -------------------------------
+  // No tracking script or cookie is needed: the app receives ordinary UTM
+  // parameters and may aggregate them under its own first-party policy.
+  $$('a[data-app-link]').forEach((anchor, index) => {
+    try {
+      const url = new URL(anchor.href);
+      url.searchParams.set('utm_source', 'pendulum-landing');
+      url.searchParams.set('utm_medium', 'referral');
+      url.searchParams.set('utm_campaign', 'research-lab');
+      url.searchParams.set('utm_content', anchor.dataset.utmContent || `cta-${index + 1}`);
+      anchor.href = url.toString();
+    } catch {
+      /* leave malformed/non-HTTP fallback links untouched */
+    }
+  });
 
   // ---- Shared evidence summary --------------------------------------------
   function applyEvidence(summary) {
@@ -48,14 +66,15 @@
     if (typeof energy.profiledMethods === 'number') {
       setText('energy.profileLabel', `${energy.profiledMethods} methods profiled`);
     }
-    setText('ledger.verify', `CSP-safe lint → strict typecheck → module-size ratchet → ${tests.total} unit tests → result-count guard → evidence summary → docs sync`);
+    setText('ledger.verify', `CSP-safe lint → strict typecheck → module-size ratchet → ${tests.total} unit tests → result-count guard → docs sync → format gate`);
     setCount('tests.passed', tests.passed);
     setCount('validation.periodDoublingComputed', pd.computed);
 
     const meta = document.querySelector('meta[name="description"]');
     if (meta && typeof tests.total === 'number') {
       const content = meta.getAttribute('content') || '';
-      meta.setAttribute('content', content.replace(/\d+ unit tests/, `${tests.total} unit tests`));
+      // Comma-aware: the static description writes "1,090 unit tests".
+      meta.setAttribute('content', content.replace(/[\d,]+ unit tests/, `${tests.total.toLocaleString('en-US')} unit tests`));
     }
   }
 
@@ -64,10 +83,35 @@
     .then(applyEvidence)
     .catch(() => {});
 
+  function applyChangelog(summary) {
+    if (!summary || summary.schemaVersion !== 'pendulum-changelog-highlights/v1' || !Array.isArray(summary.highlights)) return;
+    const cards = $$('[data-changelog-list] .changelog-card');
+    summary.highlights.slice(0, 3).forEach((highlight, index) => {
+      const card = cards[index];
+      if (!card) return;
+      const title = $('h3', card);
+      const description = $('p', card);
+      if (title) title.textContent = String(highlight.title || 'Release update');
+      if (description) description.textContent = String(highlight.summary || 'See the full changelog for details.');
+      card.dataset.ready = 'true';
+    });
+    const source = $('[data-changelog-source]');
+    if (source && typeof summary.sourceUrl === 'string') source.href = summary.sourceUrl;
+    const provenance = $('[data-changelog-provenance]');
+    if (provenance && typeof summary.sourceCommit === 'string') {
+      provenance.textContent = `Synced from pendulum-lab@${summary.sourceCommit.slice(0, 12)}`;
+    }
+  }
+
+  fetch('assets/changelog-highlights.json', { cache: 'no-store' })
+    .then((response) => response.ok ? response.json() : null)
+    .then(applyChangelog)
+    .catch(() => {});
+
   // ---- Deferred hero scene --------------------------------------------------
   const mainScriptUrl = document.currentScript?.src || new URL('assets/main.js', window.location.href).href;
-  const sceneUrl = new URL('scene.js', mainScriptUrl).href;
-  const captureHero = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+  const sceneUrl = new URL('scene.bundle.js', mainScriptUrl).href;
+  const captureHero = captureMode;
   const reducedData = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-data: reduce)').matches;
   const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2;
   let heroSceneRequested = false;
@@ -104,7 +148,7 @@
   function onScroll() {
     const sy = window.scrollY;
     nav.classList.toggle('scrolled', sy > 40);
-    if (scrim) scrim.style.opacity = Math.min(0.88, sy / (window.innerHeight * 0.9) * 0.88).toFixed(3);
+    if (scrim) scrim.style.opacity = Math.min(0.92, sy / (window.innerHeight * 0.9) * 0.92).toFixed(3);
     if (progress) {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       progress.style.width = (max > 0 ? (sy / max) * 100 : 0).toFixed(2) + '%';
@@ -112,6 +156,20 @@
   }
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
+
+  // ---- Small-screen menu: close after navigating (works without JS too) ----
+  const navMenu = $('#nav-menu');
+  if (navMenu) {
+    navMenu.querySelectorAll('a').forEach((link) => {
+      link.addEventListener('click', () => { navMenu.open = false; });
+    });
+    document.addEventListener('click', (event) => {
+      if (navMenu.open && event.target instanceof Node && !navMenu.contains(event.target)) navMenu.open = false;
+    });
+    window.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') navMenu.open = false;
+    });
+  }
 
   // ---- Scrollspy: mark the nav link whose section owns the viewport --------
   const spyLinks = $$('.nav-links a[href^="#"]');
@@ -139,7 +197,7 @@
   const pointer = { tx: 0, ty: 0, x: 0, y: 0 };   // normalised -0.5..0.5
   const spot = { tx: window.innerWidth / 2, ty: window.innerHeight / 2, x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-  if (fine && !reduced) {
+  if (fine && !reduced && !captureMode) {
     document.body.classList.add('cursor-active');
     window.addEventListener('pointermove', (e) => {
       pointer.tx = e.clientX / window.innerWidth - 0.5;
@@ -196,18 +254,11 @@
   }
 
   // ---- GSAP cinematic scroll ----------------------------------------------
-  if (window.gsap && window.ScrollTrigger && !reduced) {
+  if (window.gsap && window.ScrollTrigger && !reduced && !captureMode) {
     gsap.registerPlugin(ScrollTrigger);
 
-    // Hero copy materializes on load. We animate opacity + blur ONLY — the
-    // transform of every [data-mouse] element is owned by the parallax engine,
-    // so touching y/x here would fight it. The kicker and display decode via the
-    // scramble engine; these lines focus in underneath that.
-    const heroIntro = ['.hero-copy .lede', '.hero-actions', '.hero-type-line'];
-    gsap.set(heroIntro, { opacity: 0, filter: 'blur(14px)' });
-    gsap.to('.hero-copy .lede', { opacity: 1, filter: 'blur(0px)', duration: 1.1, ease: 'power2.out', delay: 0.35 });
-    gsap.to('.hero-actions', { opacity: 1, filter: 'blur(0px)', duration: 1.0, ease: 'power2.out', delay: 0.55 });
-    gsap.to('.hero-type-line', { opacity: 1, filter: 'blur(0px)', duration: 1.0, ease: 'power2.out', delay: 0.7 });
+    // Keep above-the-fold copy paintable immediately for LCP. GSAP owns only
+    // scroll-driven motion; the hero text never starts hidden or blurred.
 
     // hero dissolves as you descend — cinematic exit
     gsap.to('.hero .wrap', {
@@ -293,7 +344,7 @@
     })(start);
   }
   const counters = $$('[data-count]');
-  if (reduced) {
+  if (reduced || captureMode) {
     counters.forEach((el) => { el.__done = true; el.textContent = (el.dataset.prefix || '') + parseFloat(el.dataset.count).toFixed(parseInt(el.dataset.decimals || '0', 10)) + (el.dataset.suffix || ''); });
   } else {
     if ('IntersectionObserver' in window) {

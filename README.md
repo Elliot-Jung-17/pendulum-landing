@@ -29,10 +29,25 @@ browser laboratory for nonlinear pendulum dynamics.
   card interaction effects.
 - `assets/evidence-summary.json` - shared validation numbers copied from the
   main lab reports.
-- `assets/vendor/` - pinned self-hosted Three.js `0.160.0` and GSAP `3.12.5`
-  files so GitHub Pages does not depend on runtime CDN availability.
-- `tests/landing-smoke.spec.ts` - Playwright smoke test for hero paint, console
-  paint, mobile CTA bounds, and asset availability.
+- `assets/changelog-highlights.json` - three release highlights pinned to the
+  same main-repository commit as the evidence summary; refresh with
+  `npm run sync:changelog`.
+- `assets/og-card.png`, `assets/favicon-32.png`, and
+  `assets/apple-touch-icon.png` - dimension-checked social and bookmark assets.
+  The og-card is generated: `npm run assets:og-card` composites the text-free
+  base art (`assets/og-card-base.png`) with the live test count from the
+  evidence summary, and `assets/og-card-meta.json` records the numbers baked
+  into the pixels so the static gate fails when the card goes stale.
+- `assets/fonts/` - page-specific Pretendard Regular/Bold WOFF2 subsets plus
+  the OFL. After Korean copy changes, install `fonttools brotli` once and run
+  `npm run build:ko && npm run assets:fonts`; each font is capped at 60 KB.
+- `assets/scene.bundle.js` and `assets/animation-vendor.bundle.js` - minified,
+  tree-shaken self-hosted bundles generated from the lockfile-pinned Three.js
+  and GSAP packages. `npm run build:hero` refreshes both and the static gate
+  enforces separate transfer ceilings.
+- `tests/landing-smoke.spec.ts` - Playwright smoke test for hero/console paint,
+  mini-lab controls, deterministic capture mode, serious/critical axe findings,
+  mobile bounds, UTM attribution, release hydration, and asset availability.
 - `scripts/check-static-assets.mjs` - local asset/link, evidence schema/freshness,
   mojibake, external-font, and CSP inline-hash guards (recomputes the SHA-256
   of every inline script on both pages against the CSP).
@@ -40,14 +55,24 @@ browser laboratory for nonlinear pendulum dynamics.
   drift).
 - `scripts/sync-kernel-manifest.mjs` - realigns the demo-kernel manifest with
   freshly synced evidence (used by the evidence-sync workflow).
+- `scripts/sync-copy-counts.mjs` (`npm run sync:copy`) - rewrites every static
+  test-count occurrence (meta descriptions, OG/Twitter alt text, no-JS
+  fallback spans, the Korean dictionary) from the evidence summary; the
+  cross-repo release workflow runs it before the static gate.
 - `.github/workflows/landing-ci.yml` - smoke, static check, ko.html freshness,
   and Lighthouse audit.
+- `.github/workflows/node-compatibility.yml` - browser-free quick check on every
+  supported Node line (22, 24, and 26).
 - `.github/workflows/evidence-sync.yml` - pulls the evidence summary when the
   simulation repo dispatches `evidence-updated`, re-runs the full gate, and
   auto-commits the sync (see ADR 0001 in the sim repo's `docs/adr/`).
 
 There is no build step. Serve the folder statically or open `index.html`
 through any local static server.
+
+`404.html` supplies the GitHub Pages recovery route. `_headers`,
+`wrangler.toml`, and `docs/cloudflare-pages.md` define the optional Cloudflare
+Pages mirror and its COOP/COEP experiment boundary.
 
 ## Development
 
@@ -59,7 +84,8 @@ npm run lighthouse
 ```
 
 The smoke test checks that the Three.js hero either paints or falls back cleanly,
-that the 2D trajectory console paints nonblank pixels, and that key static
+that the 2D trajectory console paints nonblank pixels and reacts to its controls,
+that EN/KO axe scans have no serious or critical violations, and that key static
 assets are reachable.
 
 ## Deployment Pipeline
@@ -74,9 +100,10 @@ written under `reports/` and are intentionally gitignored; do not mix them with
 deployable assets. `npm run lighthouse` runs the stable local audit wrapper, and
 `npm run lighthouse:lhci` is kept for raw LHCI troubleshooting.
 
-The page uses self-hosted runtime assets and system font stacks. The CSP should
-remain free of external runtime hosts unless a release note explicitly explains
-the exception.
+The page uses self-hosted, tree-shaken runtime bundles and a self-hosted
+Pretendard subset for Korean copy. Three.js, GSAP, Playwright, axe, and LHCI are
+lockfile-tracked so Dependabot can see them. The CSP should remain free of
+external runtime hosts unless a release note explicitly explains the exception.
 
 For a two-repo release, follow the simulation repo checklist:
 `docs/cross-project-release.md`. The short form is sim verify -> standalone
@@ -91,9 +118,15 @@ build -> evidence sync -> landing check/smoke -> tag/release.
   and commits. The manual path (`npm run evidence:summary` in the main repo,
   then `node scripts/sync-kernel-manifest.mjs` here) remains as local
   convenience; CI can compare the two by setting `PENDULUM_LAB_EVIDENCE_PATH`.
+- After fresh evidence changes the test count, run `npm run sync:copy`,
+  `npm run assets:og-card`, and `npm run build:ko` (the static gate lists the
+  exact command when something is stale; the cross-repo release workflow runs
+  all three automatically).
 - When adding new sections, keep the first viewport anchored on the product and
   leave a visible hint of the next section below the hero.
 - CTA links should remain direct actions such as Open Lab, Try Performance Mode,
   or View Research Evidence, with deep links into the app when possible.
 
-MIT-licensed, same as the main lab.
+MIT-licensed, same as the main lab. The self-hosted Korean webfont subset under
+`assets/fonts/` is Pretendard 1.3.9 and is redistributed under the SIL Open
+Font License 1.1; its license text is stored beside the font files.

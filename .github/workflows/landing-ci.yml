@@ -4,11 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-  repository_dispatch:
-    types: [pendulum-release]
-
-env:
-  PENDULUM_EXPECTED_SOURCE_COMMIT: ${{ github.event.client_payload.source_commit || '' }}
 
 permissions:
   contents: read

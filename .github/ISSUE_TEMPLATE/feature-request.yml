@@ -1,0 +1,24 @@
+name: Landing page proposal
+description: Propose a content, interaction, localization, or evidence improvement
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: audience
+    attributes:
+      label: Audience and problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Evidence and validation
+      description: Explain how the claim, conversion, accessibility, or performance impact will be verified.
+    validations:
+      required: true

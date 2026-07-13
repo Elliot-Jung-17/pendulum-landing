@@ -1,0 +1,39 @@
+name: Landing page bug
+description: Report a reproducible content, browser, accessibility, or performance issue
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Expected and observed behavior
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps or command
+      description: Include the URL/language, viewport, and exact command when possible.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Browser, OS, device, reduced-motion setting, and connection profile.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Attach a screenshot, trace, Lighthouse JSON, or Playwright report when available.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Preflight
+      options:
+        - label: I searched for an existing issue.
+          required: true
+        - label: This is not a private security report.
+          required: true
