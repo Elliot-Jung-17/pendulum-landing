@@ -226,13 +226,50 @@
     'Reviewer console': '리뷰어 콘솔',
     'Mini-paper': '미니 논문',
     'MIT-licensed ·': 'MIT 라이선스 ·',
-    'Cite this repository': '이 저장소 인용하기'
+    'Cite this repository': '이 저장소 인용하기',
+    // ---- mini lab controls -------------------------------------------------
+    'Mini lab controls': '미니 실험실 조절기',
+    'initial angle θ₁': '초기각 θ₁',
+    'damping γ': '감쇠 계수 γ',
+    'Reset trace': '궤적 초기화',
+    // ---- TCAD mapping ------------------------------------------------------
+    'Why this maps to TCAD': '이 경험이 TCAD로 이어지는 이유',
+    'A chaos lab built with device-simulation discipline.': '소자 시뮬레이션의 원칙으로 만든 카오스 실험실.',
+    'Pendulum dynamics and semiconductor devices solve different equations, but trustworthy simulation demands the same engineering habits: expose solver assumptions, quantify discretization error, and validate against an independent reference.':
+      '진자 동역학과 반도체 소자는 서로 다른 방정식을 풀지만, 신뢰할 수 있는 시뮬레이션에는 같은 공학 원칙이 필요합니다. 해법의 가정을 드러내고, 이산화 오차를 수치화하며, 독립적인 참조해와 비교해 검증합니다.',
+    'Residuals stay visible': '잔차를 숨기지 않습니다',
+    'Implicit integrators report convergence instead of silently accepting a bad Newton step — the same honesty required by nonlinear device solvers.':
+      '암시적 적분기는 잘못된 뉴턴 단계를 조용히 받아들이지 않고 수렴 여부를 보고합니다. 비선형 소자 해석기에도 필요한 정직성입니다.',
+    'Resolution is measured': '해상도를 측정합니다',
+    'dt-halving, order checks, and energy-drift curves turn numerical resolution into evidence rather than a hidden default.':
+      '시간 간격 절반 축소, 차수 점검, 에너지 표류 곡선으로 수치 해상도를 숨은 기본값이 아닌 증거로 만듭니다.',
+    'Claims have an oracle': '주장마다 독립 기준이 있습니다',
+    'SciPy, symbolic identities, literature anchors, hashes, and replay manifests form the equivalent of a reproducible golden deck.':
+      'SciPy, 기호 항등식, 문헌 기준값, 해시, 재생 매니페스트가 재현 가능한 골든 덱과 같은 역할을 합니다.',
+    'Read the TCAD mapping': 'TCAD 연결 문서 읽기',
+    'Numerics · validation · provenance': '수치해석 · 검증 · 출처 추적',
+    // ---- validation CTA ----------------------------------------------------
+    'Do not take the numbers on trust': '숫자를 그대로 믿지 마세요',
+    'Open the evidence ledger and verify each claim yourself.': '증거 원장을 열어 각 주장을 직접 검증하세요.',
+    'Inspect the reviewer console': '리뷰어 콘솔에서 검증하기',
+    'Watch the 67-second narrated demo': '67초 내레이션 데모 보기',
+    'Download captions': '자막 내려받기',
+    // ---- changelog ---------------------------------------------------------
+    'Latest release signals': '최신 릴리스 소식',
+    'What changed — from the source, not a marketing rewrite.': '마케팅 문구가 아닌 원본에서 가져온 변경 사항.',
+    'These highlights are synchronized from the simulation repository at the same evidence commit used by this page.':
+      '이 요약은 이 페이지의 검증 수치와 같은 커밋에 있는 시뮬레이션 저장소에서 동기화됩니다.',
+    'Loading release evidence…': '릴리스 증거를 불러오는 중…',
+    'The synchronized changelog summary will appear here.': '동기화된 변경 요약이 여기에 표시됩니다.',
+    'Read the full changelog': '전체 변경 기록 읽기',
+    'Synced with release evidence': '릴리스 증거와 동기화됨'
   };
 
   const ATTRS = [
     ['a.brand', 'aria-label', 'Pendulum Lab 홈'],
     ['a.nav-launch', 'aria-label', 'Pendulum Lab 시뮬레이션 열기'],
     ['.console-readouts', 'aria-label', '실시간 콘솔 판독'],
+    ['.orbit-controls', 'aria-label', '미니 실험실 조절기'],
     ['.recipe-grid', 'aria-label', '30초 실험 레시피'],
     ['#orbit-console', 'aria-label', '이중진자 궤적 콘솔 애니메이션'],
     ['.diverge-stage svg', 'aria-label', '민감한 의존성: 갈라지는 두 궤적'],
@@ -248,7 +285,7 @@
 
   const TITLE_KO = 'Pendulum Lab — 이중진자 카오스 엔진';
   const META_DESCRIPTION_KO =
-    '비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,003개 단위 테스트, SciPy와 출판 문헌으로 검증.';
+    '비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,004개 단위 테스트, SciPy와 출판 문헌으로 검증.';
 
   function normalize(text) {
     return text.replace(/\s+/g, ' ').trim();
@@ -285,6 +322,18 @@
     if (title) title.textContent = TITLE_KO;
     const description = doc.querySelector('meta[name="description"]');
     if (description) description.setAttribute('content', META_DESCRIPTION_KO);
+    const ogTitle = doc.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', TITLE_KO);
+    const ogDescription = doc.querySelector('meta[property="og:description"]');
+    if (ogDescription) ogDescription.setAttribute('content', META_DESCRIPTION_KO);
+    const twitterTitle = doc.querySelector('meta[name="twitter:title"]');
+    if (twitterTitle) twitterTitle.setAttribute('content', TITLE_KO);
+    const twitterDescription = doc.querySelector('meta[name="twitter:description"]');
+    if (twitterDescription) twitterDescription.setAttribute('content', META_DESCRIPTION_KO);
+    const ogLocale = doc.querySelector('meta[property="og:locale"]');
+    if (ogLocale) ogLocale.setAttribute('content', 'ko_KR');
+    const ogLocaleAlternate = doc.querySelector('meta[property="og:locale:alternate"]');
+    if (ogLocaleAlternate) ogLocaleAlternate.setAttribute('content', 'en_US');
   }
 
   function localizeAppLinks(doc) {

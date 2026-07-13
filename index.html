@@ -4,17 +4,23 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Pendulum Lab — The Double-Pendulum Chaos Engine</title>
-<meta name="description" content="A framework-free TypeScript engine and browser laboratory for nonlinear pendulum dynamics — thirteen primary integrators, full Lyapunov diagnostics, CPU-oracle-gated WebGPU pipelines, and hash-verifiable research bundles. 1,003 unit tests, validated against SciPy and published literature." />
+<meta name="description" content="A framework-free TypeScript engine and browser laboratory for nonlinear pendulum dynamics — thirteen primary integrators, full Lyapunov diagnostics, CPU-oracle-gated WebGPU pipelines, and hash-verifiable research bundles. 1,004 unit tests, validated against SciPy and published literature." />
 <meta property="og:title" content="Pendulum Lab — The Double-Pendulum Chaos Engine" />
 <meta property="og:description" content="Order, undone by chaos. A validated chaotic-pendulum research laboratory that runs entirely in your browser." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://elliotjung.github.io/pendulum-landing/" />
-<meta property="og:image" content="https://elliotjung.github.io/pendulum-landing/assets/app-preview.png" />
-<meta property="og:image:alt" content="Pendulum Lab browser app showing live simulation and research panels" />
+<meta property="og:locale" content="en_US" />
+<meta property="og:locale:alternate" content="ko_KR" />
+<meta property="og:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png" />
+<meta property="og:image:type" content="image/png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Pendulum Lab — Order, undone by chaos. 1,004 tests and SciPy-validated." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Pendulum Lab - The Double-Pendulum Chaos Engine" />
 <meta name="twitter:description" content="A browser-native nonlinear dynamics lab with synchronized test, reviewer, publication, and GPU evidence." />
-<meta name="twitter:image" content="https://elliotjung.github.io/pendulum-landing/assets/app-preview.png" />
+<meta name="twitter:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png" />
+<meta name="twitter:image:alt" content="Pendulum Lab — Order, undone by chaos. 1,004 tests and SciPy-validated." />
 <link rel="canonical" href="https://elliotjung.github.io/pendulum-landing/" />
 <link rel="alternate" hreflang="en" href="https://elliotjung.github.io/pendulum-landing/" />
 <link rel="alternate" hreflang="ko" href="https://elliotjung.github.io/pendulum-landing/ko.html" />
@@ -25,19 +31,12 @@
      visitors get a plain static page (no runtime translation cost). The CSP
      pins this block by hash; scripts/check-static-assets.mjs recomputes it. -->
 <script id="lang-boot">(function(){try{var q=new URLSearchParams(location.search);if(q.get("lang")==="en"){localStorage.setItem("pendulum-landing/lang","en");return}var s=null;try{s=localStorage.getItem("pendulum-landing/lang")}catch(e){}var ko=(navigator.languages||[navigator.language||""]).some(function(t){return String(t).toLowerCase().indexOf("ko")===0});if(q.get("lang")==="ko"||s==="ko"||(!s&&ko))location.replace("ko.html"+location.hash)}catch(e){}})();</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Fpj/MoPSjC7+ELpJH0JTT2lVmJvasSs82XfDvgabOD8=' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-GDtFcHQOJD3hSQ6Lhx2FU6602NjifYCO19uTPHghSnA='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-GDtFcHQOJD3hSQ6Lhx2FU6602NjifYCO19uTPHghSnA='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E" />
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
 <link rel="stylesheet" href="assets/landing.css" />
 
-<!-- Three.js (the core R3F wraps) for the hero sculpture -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "./assets/vendor/three/three.module.js",
-    "three/addons/": "./assets/vendor/three/examples/jsm/"
-  }
-}
-</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -186,8 +185,21 @@
         <div class="console-readout"><span>trace</span><strong data-orbit-readout="trace">warming</strong></div>
         <div class="console-readout"><span>mode</span><strong data-orbit-readout="mode">live</strong></div>
       </div>
+      <div class="orbit-controls" aria-label="Mini lab controls">
+        <label for="orbit-theta">
+          <span>initial angle θ₁</span>
+          <output for="orbit-theta" data-orbit-output="theta">2.18 rad</output>
+        </label>
+        <input id="orbit-theta" data-orbit-control="theta" type="range" min="0.40" max="3.00" step="0.01" value="2.18" />
+        <label for="orbit-damping">
+          <span>damping γ</span>
+          <output for="orbit-damping" data-orbit-output="damping">0.06</output>
+        </label>
+        <input id="orbit-damping" data-orbit-control="damping" type="range" min="0" max="0.80" step="0.01" value="0.06" />
+        <button class="orbit-reset" type="button" data-orbit-reset>Reset trace</button>
+      </div>
       <div class="console-actions">
-        <a class="btn primary sm" href="https://elliotjung.github.io/pendulum-lab/?audience=beginner&tab=lab&sysType=double&th1=2.18&th2=2.64&iw1=0&iw2=0&m1=1&m2=1&l1=1&l2=1&g=9.81" data-app-link>Open This State <span class="arrow">→</span></a>
+        <a class="btn primary sm" href="https://elliotjung.github.io/pendulum-lab/?audience=beginner&tab=lab&sysType=double&th1=2.18&th2=2.64&iw1=0&iw2=0&m1=1&m2=1&l1=1&l2=1&g=9.81&gamma=0.06" data-app-link data-orbit-launch>Open This State <span class="arrow">→</span></a>
         <a class="btn ghost sm" href="https://elliotjung.github.io/pendulum-lab/reviewer.html">Reviewer Ledger</a>
       </div>
     </div>
@@ -456,6 +468,38 @@
   </div>
 </section>
 
+<!-- ============================== TCAD MAPPING ============================== -->
+<section class="band tcad-band" id="tcad">
+  <div class="wrap tcad-grid">
+    <div class="sec-head reveal">
+      <span class="kicker">Why this maps to TCAD</span>
+      <h2 data-rise data-decrypt>A chaos lab built with device-simulation discipline.</h2>
+      <p>Pendulum dynamics and semiconductor devices solve different equations, but trustworthy simulation demands the same engineering habits: expose solver assumptions, quantify discretization error, and validate against an independent reference.</p>
+    </div>
+    <div class="tcad-cards" data-stagger>
+      <article class="tcad-card">
+        <span>01 · nonlinear solve</span>
+        <h3>Residuals stay visible</h3>
+        <p>Implicit integrators report convergence instead of silently accepting a bad Newton step — the same honesty required by nonlinear device solvers.</p>
+      </article>
+      <article class="tcad-card">
+        <span>02 · mesh ↔ timestep</span>
+        <h3>Resolution is measured</h3>
+        <p>dt-halving, order checks, and energy-drift curves turn numerical resolution into evidence rather than a hidden default.</p>
+      </article>
+      <article class="tcad-card">
+        <span>03 · reference deck</span>
+        <h3>Claims have an oracle</h3>
+        <p>SciPy, symbolic identities, literature anchors, hashes, and replay manifests form the equivalent of a reproducible golden deck.</p>
+      </article>
+    </div>
+    <div class="guide-foot reveal">
+      <a class="btn ghost" href="https://github.com/elliotjung/pendulum-lab/blob/master/docs/device-simulation-mapping.md">Read the TCAD mapping</a>
+      <span class="note">Numerics · validation · provenance</span>
+    </div>
+  </div>
+</section>
+
 <!-- ============================== VALIDATION ============================== -->
 <section class="band solid" id="validation">
   <div class="wrap">
@@ -518,6 +562,38 @@
         <div class="ledger-row"><span class="k">evidence</span><span class="v">Reports attest their source commit; a reviewer console reads the machine-readable certification chain</span></div>
         <div class="ledger-row"><span class="k">mutation</span><span class="v">Stryker aggregate: <span data-evidence="mutation.detailLabel">65.32% total · 68.34% covered · low band · 29 shards</span></span></div>
       </div>
+    </div>
+    <div class="validation-cta reveal">
+      <div>
+        <span class="kicker">Do not take the numbers on trust</span>
+        <h3>Open the evidence ledger and verify each claim yourself.</h3>
+      </div>
+      <div class="validation-actions">
+        <a class="btn primary" href="https://elliotjung.github.io/pendulum-lab/reviewer.html">Inspect the reviewer console <span class="arrow">→</span></a>
+        <a class="btn ghost" href="https://elliotjung.github.io/pendulum-lab/paper/">Read the mini-paper</a>
+        <a class="btn ghost" href="https://github.com/elliotjung/pendulum-lab/releases/latest/download/demo-narrated-ko.mp4">Watch the 67-second narrated demo</a>
+        <a class="text-link" href="https://github.com/elliotjung/pendulum-lab/releases/latest/download/demo-narrated-ko.vtt">Download captions</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CHANGELOG ============================== -->
+<section class="band changelog-band" id="changelog">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">Latest release signals</span>
+      <h2 data-rise>What changed — from the source, not a marketing rewrite.</h2>
+      <p>These highlights are synchronized from the simulation repository at the same evidence commit used by this page.</p>
+    </div>
+    <div class="changelog-grid" data-changelog-list aria-live="polite">
+      <article class="changelog-card"><span>01</span><h3>Loading release evidence…</h3><p>The synchronized changelog summary will appear here.</p></article>
+      <article class="changelog-card"><span>02</span><h3>Loading release evidence…</h3><p>The synchronized changelog summary will appear here.</p></article>
+      <article class="changelog-card"><span>03</span><h3>Loading release evidence…</h3><p>The synchronized changelog summary will appear here.</p></article>
+    </div>
+    <div class="guide-foot reveal">
+      <a class="btn ghost" data-changelog-source href="https://github.com/elliotjung/pendulum-lab/blob/master/CHANGELOG.md">Read the full changelog</a>
+      <span class="note" data-changelog-provenance>Synced with release evidence</span>
     </div>
   </div>
 </section>
@@ -603,6 +679,7 @@
 </footer>
 
 <script type="module" src="assets/orbit-console.js"></script>
+<script defer src="assets/animation-vendor.bundle.js"></script>
 <script defer src="assets/main.js"></script>
 <script defer src="assets/reactbits.js"></script>
 </body>

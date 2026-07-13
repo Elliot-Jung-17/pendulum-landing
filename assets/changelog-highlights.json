@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "pendulum-changelog-highlights/v1",
+  "generatedAt": "2026-07-13T02:32:03.948Z",
+  "sourceCommit": "e520e1abc092dc9b1e4bfe702380d626a0de71f7",
+  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/e520e1abc092dc9b1e4bfe702380d626a0de71f7/CHANGELOG.md",
+  "highlights": [
+    {
+      "title": "Scoped publishing and coordinated releases",
+      "summary": "Renamed the unpublished package coordinate to @elliotjung/pendulum-lab, added npm/JSR OIDC publication lanes, and made one simulator tag gate the landing evidence sync, smoke/Lighthouse pass, package publication, release assets, and …"
+    },
+    {
+      "title": "Portable, evidence-rich release assets",
+      "summary": "Replaced committed root standalone blobs with a compact SHA-256 manifest; the double-click HTML and workers are now generated and attached as release assets."
+    },
+    {
+      "title": "Broader verification gates",
+      "summary": "Added ESLint, Prettier, TypeScript 5.9 isolated declarations, Node 24/26 compatibility checks, required pinned Julia validation, CSS coverage, mutation-survivor triage, coverage badges, and benchmark history."
+    }
+  ]
+}

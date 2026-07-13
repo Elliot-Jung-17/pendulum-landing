@@ -4,6 +4,7 @@ export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
   expect: { timeout: 5_000 },
+  snapshotPathTemplate: '{testDir}/snapshots/{arg}{ext}',
   reporter: [['list'], ['html', { outputFolder: 'reports/playwright', open: 'never' }]],
   webServer: {
     command: 'python -m http.server 4177 --bind 127.0.0.1',

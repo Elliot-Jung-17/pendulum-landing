@@ -3,17 +3,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pendulum Lab — 이중진자 카오스 엔진</title>
-<meta name="description" content="비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,003개 단위 테스트, SciPy와 출판 문헌으로 검증.">
-<meta property="og:title" content="Pendulum Lab — The Double-Pendulum Chaos Engine">
-<meta property="og:description" content="Order, undone by chaos. A validated chaotic-pendulum research laboratory that runs entirely in your browser.">
+<meta name="description" content="비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,004개 단위 테스트, SciPy와 출판 문헌으로 검증.">
+<meta property="og:title" content="Pendulum Lab — 이중진자 카오스 엔진">
+<meta property="og:description" content="비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,004개 단위 테스트, SciPy와 출판 문헌으로 검증.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://elliotjung.github.io/pendulum-landing/ko.html">
-<meta property="og:image" content="https://elliotjung.github.io/pendulum-landing/assets/app-preview.png">
-<meta property="og:image:alt" content="Pendulum Lab browser app showing live simulation and research panels">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Pendulum Lab — Order, undone by chaos. 1,004 tests and SciPy-validated.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Pendulum Lab - The Double-Pendulum Chaos Engine">
-<meta name="twitter:description" content="A browser-native nonlinear dynamics lab with synchronized test, reviewer, publication, and GPU evidence.">
-<meta name="twitter:image" content="https://elliotjung.github.io/pendulum-landing/assets/app-preview.png">
+<meta name="twitter:title" content="Pendulum Lab — 이중진자 카오스 엔진">
+<meta name="twitter:description" content="비선형 진자 동역학을 위한 프레임워크 없는 TypeScript 엔진과 브라우저 실험실 — 13종의 주력 적분기, 전체 랴푸노프 진단, CPU 오러클로 게이트되는 WebGPU 파이프라인, 해시 검증 연구 번들. 1,004개 단위 테스트, SciPy와 출판 문헌으로 검증.">
+<meta name="twitter:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png">
+<meta name="twitter:image:alt" content="Pendulum Lab — Order, undone by chaos. 1,004 tests and SciPy-validated.">
 <link rel="canonical" href="https://elliotjung.github.io/pendulum-landing/ko.html">
 <link rel="alternate" hreflang="en" href="https://elliotjung.github.io/pendulum-landing/">
 <link rel="alternate" hreflang="ko" href="https://elliotjung.github.io/pendulum-landing/ko.html">
@@ -24,19 +30,12 @@
      visitors get a plain static page (no runtime translation cost). The CSP
      pins this block by hash; scripts/check-static-assets.mjs recomputes it. -->
 <script id="lang-boot">(function(){try{var q=new URLSearchParams(location.search);if(q.get("lang")==="ko"||!localStorage.getItem("pendulum-landing/lang"))localStorage.setItem("pendulum-landing/lang","ko")}catch(e){}})();</script>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-Fpj/MoPSjC7+ELpJH0JTT2lVmJvasSs82XfDvgabOD8=' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-NFWuvSHF6j2X2q32nvMzi2ZW+BTTnd3HHApjU25LoOE='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c+LgjLHLLAQTdNv4CGkuywYEyFKSiWTVEYk+HC/hLeI=' 'sha256-NFWuvSHF6j2X2q32nvMzi2ZW+BTTnd3HHApjU25LoOE='; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='5' r='2.4' fill='%2318d4f8'/%3E%3Cpath d='M16 6.5 L23 16 L19 25' stroke='%2318d4f8' stroke-width='1.4' stroke-linecap='round' opacity='.85'/%3E%3Ccircle cx='23' cy='16' r='2' fill='%239d78ff'/%3E%3Ccircle cx='19' cy='25' r='2.8' fill='%2318d4f8'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="assets/landing.css">
 
-<!-- Three.js (the core R3F wraps) for the hero sculpture -->
-<script type="importmap">
-{
-  "imports": {
-    "three": "./assets/vendor/three/three.module.js",
-    "three/addons/": "./assets/vendor/three/examples/jsm/"
-  }
-}
-</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -180,8 +179,21 @@
         <div class="console-readout"><span>trace</span><strong data-orbit-readout="trace">warming</strong></div>
         <div class="console-readout"><span>mode</span><strong data-orbit-readout="mode">live</strong></div>
       </div>
+      <div class="orbit-controls" aria-label="미니 실험실 조절기">
+        <label for="orbit-theta">
+          <span>초기각 θ₁</span>
+          <output for="orbit-theta" data-orbit-output="theta">2.18 rad</output>
+        </label>
+        <input id="orbit-theta" data-orbit-control="theta" type="range" min="0.40" max="3.00" step="0.01" value="2.18">
+        <label for="orbit-damping">
+          <span>감쇠 계수 γ</span>
+          <output for="orbit-damping" data-orbit-output="damping">0.06</output>
+        </label>
+        <input id="orbit-damping" data-orbit-control="damping" type="range" min="0" max="0.80" step="0.01" value="0.06">
+        <button class="orbit-reset" type="button" data-orbit-reset="">궤적 초기화</button>
+      </div>
       <div class="console-actions">
-        <a class="btn primary sm" href="https://elliotjung.github.io/pendulum-lab/?audience=beginner&amp;tab=lab&amp;sysType=double&amp;th1=2.18&amp;th2=2.64&amp;iw1=0&amp;iw2=0&amp;m1=1&amp;m2=1&amp;l1=1&amp;l2=1&amp;g=9.81&amp;lang=ko" data-app-link="">이 상태로 열기 <span class="arrow">→</span></a>
+        <a class="btn primary sm" href="https://elliotjung.github.io/pendulum-lab/?audience=beginner&amp;tab=lab&amp;sysType=double&amp;th1=2.18&amp;th2=2.64&amp;iw1=0&amp;iw2=0&amp;m1=1&amp;m2=1&amp;l1=1&amp;l2=1&amp;g=9.81&amp;gamma=0.06&amp;lang=ko" data-app-link="" data-orbit-launch="">이 상태로 열기 <span class="arrow">→</span></a>
         <a class="btn ghost sm" href="https://elliotjung.github.io/pendulum-lab/reviewer.html">리뷰어 원장</a>
       </div>
     </div>
@@ -441,6 +453,38 @@
   </div>
 </section>
 
+<!-- ============================== TCAD MAPPING ============================== -->
+<section class="band tcad-band" id="tcad">
+  <div class="wrap tcad-grid">
+    <div class="sec-head reveal">
+      <span class="kicker">이 경험이 TCAD로 이어지는 이유</span>
+      <h2 data-rise="" data-decrypt="">소자 시뮬레이션의 원칙으로 만든 카오스 실험실.</h2>
+      <p>진자 동역학과 반도체 소자는 서로 다른 방정식을 풀지만, 신뢰할 수 있는 시뮬레이션에는 같은 공학 원칙이 필요합니다. 해법의 가정을 드러내고, 이산화 오차를 수치화하며, 독립적인 참조해와 비교해 검증합니다.</p>
+    </div>
+    <div class="tcad-cards" data-stagger="">
+      <article class="tcad-card">
+        <span>01 · nonlinear solve</span>
+        <h3>잔차를 숨기지 않습니다</h3>
+        <p>암시적 적분기는 잘못된 뉴턴 단계를 조용히 받아들이지 않고 수렴 여부를 보고합니다. 비선형 소자 해석기에도 필요한 정직성입니다.</p>
+      </article>
+      <article class="tcad-card">
+        <span>02 · mesh ↔ timestep</span>
+        <h3>해상도를 측정합니다</h3>
+        <p>시간 간격 절반 축소, 차수 점검, 에너지 표류 곡선으로 수치 해상도를 숨은 기본값이 아닌 증거로 만듭니다.</p>
+      </article>
+      <article class="tcad-card">
+        <span>03 · reference deck</span>
+        <h3>주장마다 독립 기준이 있습니다</h3>
+        <p>SciPy, 기호 항등식, 문헌 기준값, 해시, 재생 매니페스트가 재현 가능한 골든 덱과 같은 역할을 합니다.</p>
+      </article>
+    </div>
+    <div class="guide-foot reveal">
+      <a class="btn ghost" href="https://github.com/elliotjung/pendulum-lab/blob/master/docs/device-simulation-mapping.md">TCAD 연결 문서 읽기</a>
+      <span class="note">수치해석 · 검증 · 출처 추적</span>
+    </div>
+  </div>
+</section>
+
 <!-- ============================== VALIDATION ============================== -->
 <section class="band solid" id="validation">
   <div class="wrap">
@@ -503,6 +547,38 @@
         <div class="ledger-row"><span class="k">evidence</span><span class="v">리포트가 소스 커밋을 증명하고, 리뷰어 콘솔이 기계가 읽는 인증 체인을 읽습니다</span></div>
         <div class="ledger-row"><span class="k">mutation</span><span class="v">Stryker 집계: <span data-evidence="mutation.detailLabel">65.32% total · 68.34% covered · low band · 29 shards</span></span></div>
       </div>
+    </div>
+    <div class="validation-cta reveal">
+      <div>
+        <span class="kicker">숫자를 그대로 믿지 마세요</span>
+        <h3>증거 원장을 열어 각 주장을 직접 검증하세요.</h3>
+      </div>
+      <div class="validation-actions">
+        <a class="btn primary" href="https://elliotjung.github.io/pendulum-lab/reviewer.html">리뷰어 콘솔에서 검증하기 <span class="arrow">→</span></a>
+        <a class="btn ghost" href="https://elliotjung.github.io/pendulum-lab/paper/">미니 논문 읽기</a>
+        <a class="btn ghost" href="https://github.com/elliotjung/pendulum-lab/releases/latest/download/demo-narrated-ko.mp4">67초 내레이션 데모 보기</a>
+        <a class="text-link" href="https://github.com/elliotjung/pendulum-lab/releases/latest/download/demo-narrated-ko.vtt">자막 내려받기</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== CHANGELOG ============================== -->
+<section class="band changelog-band" id="changelog">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="kicker">최신 릴리스 소식</span>
+      <h2 data-rise="">마케팅 문구가 아닌 원본에서 가져온 변경 사항.</h2>
+      <p>이 요약은 이 페이지의 검증 수치와 같은 커밋에 있는 시뮬레이션 저장소에서 동기화됩니다.</p>
+    </div>
+    <div class="changelog-grid" data-changelog-list="" aria-live="polite">
+      <article class="changelog-card"><span>01</span><h3>릴리스 증거를 불러오는 중…</h3><p>동기화된 변경 요약이 여기에 표시됩니다.</p></article>
+      <article class="changelog-card"><span>02</span><h3>릴리스 증거를 불러오는 중…</h3><p>동기화된 변경 요약이 여기에 표시됩니다.</p></article>
+      <article class="changelog-card"><span>03</span><h3>릴리스 증거를 불러오는 중…</h3><p>동기화된 변경 요약이 여기에 표시됩니다.</p></article>
+    </div>
+    <div class="guide-foot reveal">
+      <a class="btn ghost" data-changelog-source="" href="https://github.com/elliotjung/pendulum-lab/blob/master/CHANGELOG.md">전체 변경 기록 읽기</a>
+      <span class="note" data-changelog-provenance="">릴리스 증거와 동기화됨</span>
     </div>
   </div>
 </section>
@@ -588,6 +664,7 @@
 </footer>
 
 <script type="module" src="assets/orbit-console.js"></script>
+<script defer="" src="assets/animation-vendor.bundle.js"></script>
 <script defer="" src="assets/main.js"></script>
 <script defer="" src="assets/reactbits.js"></script>
 

@@ -10,12 +10,21 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const captureMode = new URLSearchParams(window.location.search).has('captureHero');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || captureMode;
   const readouts = {
     separation: document.querySelector('[data-orbit-readout="separation"]'),
     drift: document.querySelector('[data-orbit-readout="drift"]'),
     trace: document.querySelector('[data-orbit-readout="trace"]'),
     mode: document.querySelector('[data-orbit-readout="mode"]')
+  };
+  const controls = {
+    theta: document.querySelector('[data-orbit-control="theta"]'),
+    damping: document.querySelector('[data-orbit-control="damping"]'),
+    thetaOutput: document.querySelector('[data-orbit-output="theta"]'),
+    dampingOutput: document.querySelector('[data-orbit-output="damping"]'),
+    reset: document.querySelector('[data-orbit-reset]'),
+    launch: document.querySelector('[data-orbit-launch]')
   };
 
   let width = 920;
@@ -31,6 +40,8 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   const runtimeParams = { ...params };
   const primary = [2.18, 2.64, 0, 0];
   const twin = [2.181, 2.64, 0, 0];
+  let initialTheta = 2.18;
+  let damping = 0.06;
   const maxTrail = 520;
   const trailA = makeTrail(maxTrail);
   const trailB = makeTrail(maxTrail);
@@ -72,8 +83,9 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   function rk4Into(s, work, dt) {
     runtimeParams.g = params.g + pointerY * 0.45;
     rk4StepDouble(s, runtimeParams, dt, work);
-    s[2] *= 0.9996;
-    s[3] *= 0.9996;
+    const decay = Math.exp(-damping * dt);
+    s[2] *= decay;
+    s[3] *= decay;
   }
 
   function pointInto(s, out) {
@@ -168,6 +180,50 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     if (readouts.mode) readouts.mode.textContent = reduced ? 'static' : visible && !document.hidden ? 'live' : 'standby';
   }
 
+  function updateControlSurface() {
+    if (controls.thetaOutput) controls.thetaOutput.textContent = `${initialTheta.toFixed(2)} rad`;
+    if (controls.dampingOutput) controls.dampingOutput.textContent = damping.toFixed(2);
+    if (controls.launch instanceof HTMLAnchorElement) {
+      try {
+        const url = new URL(controls.launch.href);
+        url.searchParams.set('th1', initialTheta.toFixed(2));
+        url.searchParams.set('gamma', damping.toFixed(2));
+        controls.launch.href = url.toString();
+      } catch {
+        /* keep the static fallback URL */
+      }
+    }
+  }
+
+  function clearTrail(trail) {
+    trail.head = 0;
+    trail.len = 0;
+  }
+
+  function resetSimulation() {
+    primary[0] = initialTheta;
+    primary[1] = 2.64;
+    primary[2] = 0;
+    primary[3] = 0;
+    twin[0] = initialTheta + 0.001;
+    twin[1] = 2.64;
+    twin[2] = 0;
+    twin[3] = 0;
+    clearTrail(trailA);
+    clearTrail(trailB);
+    frame = 0;
+    const warmupSteps = reduced ? 180 : 80;
+    for (let i = 0; i < warmupSteps; i += 1) {
+      rk4Into(primary, workA, 1 / 150);
+      rk4Into(twin, workB, 1 / 150);
+      pushTrail();
+    }
+    draw();
+    updateReadouts();
+    updateControlSurface();
+    window.__orbitConsoleState = { initialTheta, damping };
+  }
+
   function draw() {
     drawGrid();
     drawTrail(trailA, 'rgba(24,212,248,ALPHA)');
@@ -224,6 +280,15 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     pointerX = 0;
     pointerY = 0;
   });
+  controls.theta?.addEventListener('input', () => {
+    initialTheta = Number.parseFloat(controls.theta.value) || 2.18;
+    resetSimulation();
+  });
+  controls.damping?.addEventListener('input', () => {
+    damping = Math.max(0, Number.parseFloat(controls.damping.value) || 0);
+    resetSimulation();
+  });
+  controls.reset?.addEventListener('click', resetSimulation);
 
   window.addEventListener('resize', () => {
     resize();
@@ -236,13 +301,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   });
 
   resize();
-  for (let i = 0; i < (reduced ? 360 : 80); i += 1) {
-    rk4Into(primary, workA, 1 / 150);
-    rk4Into(twin, workB, 1 / 150);
-    pushTrail();
-  }
-  draw();
-  updateReadouts();
+  resetSimulation();
 
   if ('IntersectionObserver' in window) {
     const observer = new IntersectionObserver((entries) => {

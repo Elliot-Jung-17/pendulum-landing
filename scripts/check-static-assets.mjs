@@ -8,7 +8,8 @@ const failures = [];
 const warnings = [];
 // English source page + the generated Korean page (scripts/build-ko-page.mjs):
 // both must satisfy the same CSP/inline-hash and local-asset invariants.
-const PAGES = ['index.html', 'ko.html'];
+const PAGES = ['index.html', 'ko.html', '404.html'];
+const CONTENT_PAGES = new Set(['index.html', 'ko.html']);
 
 const ignoredDirs = new Set(['.git', '.lighthouseci', 'node_modules', 'reports', 'test-results', 'assets/vendor']);
 const textExtensions = new Set(['.css', '.html', '.js', '.json', '.md', '.mjs', '.txt', '.xml']);
@@ -42,6 +43,7 @@ for (const pageName of PAGES) {
   if (pageName === 'index.html' && /style-src-attr[^;]*'unsafe-inline'/i.test(csp)) {
     warnings.push('CSP style-src-attr remains narrowly enabled for runtime animation state');
   }
+  if (CONTENT_PAGES.has(pageName)) verifySocialMetadata(pageName, html);
 
   const attrPattern = /\b(?:href|src|srcset)=["']([^"']+)["']/g;
   for (const match of html.matchAll(attrPattern)) {
@@ -63,6 +65,7 @@ for (const pageName of PAGES) {
 
 const evidence = JSON.parse(await readFile(join(root, 'assets', 'evidence-summary.json'), 'utf8'));
 const kernelManifest = JSON.parse(await readFile(join(root, 'assets', 'demo-kernel-manifest.json'), 'utf8'));
+const changelog = JSON.parse(await readFile(join(root, 'assets', 'changelog-highlights.json'), 'utf8'));
 const kernelBytes = await readFile(join(root, kernelManifest.kernel));
 if (createHash('sha256').update(kernelBytes).digest('hex') !== kernelManifest.sha256) {
   failures.push('demo kernel SHA-256 does not match its manifest');
@@ -77,6 +80,11 @@ if (!Number.isFinite(evidence.tests?.total) || evidence.tests.total <= 0) {
   failures.push('evidence summary is missing a positive tests.total');
 }
 checkEvidenceFreshness(evidence);
+checkChangelog(changelog, evidence);
+await checkPngDimensions('assets/favicon-32.png', 32, 32);
+await checkPngDimensions('assets/apple-touch-icon.png', 180, 180);
+await checkPngDimensions('assets/og-card.png', 1200, 630);
+await checkSitemap();
 await compareMainEvidenceIfProvided(evidence);
 await checkTextEncoding();
 
@@ -127,6 +135,57 @@ function verifyCspInlineScriptHashes(pageName, pageHtml, policy) {
     if (!inlineHashes.has(hash)) {
       failures.push(`${pageName}: CSP script-src lists a stale sha256 that matches no inline script: 'sha256-${hash}'`);
     }
+  }
+}
+
+function verifySocialMetadata(pageName, html) {
+  const expectedLocale = pageName === 'ko.html' ? 'ko_KR' : 'en_US';
+  const expectedAlternate = pageName === 'ko.html' ? 'en_US' : 'ko_KR';
+  const required = [
+    [`property="og:locale" content="${expectedLocale}"`, 'primary OG locale'],
+    [`property="og:locale:alternate" content="${expectedAlternate}"`, 'alternate OG locale'],
+    ['property="og:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png"', 'dedicated OG image'],
+    ['property="og:image:type" content="image/png"', 'OG image MIME type'],
+    ['property="og:image:width" content="1200"', 'OG image width'],
+    ['property="og:image:height" content="630"', 'OG image height'],
+    ['name="twitter:image" content="https://elliotjung.github.io/pendulum-landing/assets/og-card.png"', 'Twitter image'],
+    ['rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png"', 'PNG favicon'],
+    ['rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png"', 'Apple touch icon']
+  ];
+  for (const [token, label] of required) if (!html.includes(token)) failures.push(`${pageName}: missing ${label}`);
+}
+
+function checkChangelog(summary, evidenceSummary) {
+  if (summary.schemaVersion !== 'pendulum-changelog-highlights/v1') failures.push('unexpected changelog highlights schema');
+  if (!Array.isArray(summary.highlights) || summary.highlights.length !== 3) failures.push('changelog highlights must contain exactly three entries');
+  else if (summary.highlights.some((item) => typeof item.title !== 'string' || !item.title.trim() || typeof item.summary !== 'string' || !item.summary.trim())) {
+    failures.push('changelog highlights contain an empty title or summary');
+  }
+  if (summary.sourceCommit !== evidenceSummary.provenance?.sourceCommit) failures.push('changelog sourceCommit does not match evidence sourceCommit');
+  if (!/^https:\/\/github\.com\/elliotjung\/pendulum-lab\/blob\/[a-f0-9]{40}\/CHANGELOG\.md$/i.test(summary.sourceUrl ?? '')) {
+    failures.push('changelog sourceUrl is missing or not commit-pinned');
+  }
+}
+
+async function checkPngDimensions(relativePath, expectedWidth, expectedHeight) {
+  const bytes = await readFile(join(root, relativePath)).catch(() => null);
+  if (!bytes || bytes.length < 24 || bytes.toString('ascii', 1, 4) !== 'PNG') {
+    failures.push(`${relativePath}: missing or invalid PNG`);
+    return;
+  }
+  const width = bytes.readUInt32BE(16);
+  const height = bytes.readUInt32BE(20);
+  if (width !== expectedWidth || height !== expectedHeight) {
+    failures.push(`${relativePath}: expected ${expectedWidth}x${expectedHeight}, got ${width}x${height}`);
+  }
+}
+
+async function checkSitemap() {
+  const sitemap = await readFile(join(root, 'sitemap.xml'), 'utf8');
+  const urls = [...sitemap.matchAll(/<url>[\s\S]*?<loc>([^<]+)<\/loc>[\s\S]*?<lastmod>([^<]+)<\/lastmod>[\s\S]*?<\/url>/g)];
+  if (urls.length !== 2) failures.push('sitemap must contain two URLs with lastmod values');
+  for (const [, loc, lastmod] of urls) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(lastmod) || !Number.isFinite(Date.parse(lastmod))) failures.push(`sitemap ${loc}: invalid lastmod ${lastmod}`);
   }
 }
 

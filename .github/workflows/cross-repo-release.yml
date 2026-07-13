@@ -1,0 +1,127 @@
+name: Cross-repository release
+run-name: Cross-repo release ${{ github.event.client_payload.tag || inputs.tag }} from ${{ github.event.client_payload.orchestrator_run_id || github.run_id }}
+
+on:
+  repository_dispatch:
+    types: [pendulum-release]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Simulator release tag
+        type: string
+        required: true
+      release_commit:
+        description: Simulator release commit SHA
+        type: string
+        required: true
+      source_commit:
+        description: Expected evidence source commit SHA
+        type: string
+        required: true
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: landing-main-writes
+  cancel-in-progress: false
+
+jobs:
+  gate-and-tag:
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
+      RELEASE_COMMIT: ${{ github.event.client_payload.release_commit || inputs.release_commit }}
+      EXPECTED_SOURCE_COMMIT: ${{ github.event.client_payload.source_commit || inputs.source_commit }}
+      EVIDENCE_BASE64: ${{ github.event.client_payload.evidence_base64 || '' }}
+      EXPECTED_EVIDENCE_SHA256: ${{ github.event.client_payload.evidence_sha256 || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Materialize the exact release evidence payload
+        shell: bash
+        run: |
+          test -n "$RELEASE_TAG" && test -n "$RELEASE_COMMIT" && test -n "$EXPECTED_SOURCE_COMMIT"
+          if [ -n "$EVIDENCE_BASE64" ]; then
+            printf '%s' "$EVIDENCE_BASE64" | base64 --decode > assets/evidence-summary.json
+          else
+            curl --fail --silent --show-error --retry 5 \
+              -o assets/evidence-summary.json \
+              "https://raw.githubusercontent.com/elliotjung/pendulum-lab/${RELEASE_COMMIT}/reports/evidence-summary.json"
+          fi
+          actual_sha256="$(sha256sum assets/evidence-summary.json | cut -d' ' -f1)"
+          if [ -n "$EXPECTED_EVIDENCE_SHA256" ]; then
+            test "$actual_sha256" = "$EXPECTED_EVIDENCE_SHA256" || {
+              echo "evidence SHA-256 $actual_sha256 does not match dispatched $EXPECTED_EVIDENCE_SHA256" >&2
+              exit 1
+            }
+          fi
+          actual="$(node -e "process.stdout.write(require('./assets/evidence-summary.json').provenance.sourceCommit)")"
+          test "$actual" = "$EXPECTED_SOURCE_COMMIT" || {
+            echo "evidence source $actual does not match dispatched $EXPECTED_SOURCE_COMMIT" >&2
+            exit 1
+          }
+      - run: node scripts/sync-kernel-manifest.mjs
+      - run: npm run sync:changelog
+      - run: npm run build:ko
+      - name: Static, accessibility, and browser gate
+        env:
+          PENDULUM_EXPECTED_SOURCE_COMMIT: ${{ env.EXPECTED_SOURCE_COMMIT }}
+        run: npm run check
+      - run: npx playwright install --with-deps chromium
+      - run: npm run smoke
+      - run: npm run lighthouse:lhci
+      - name: Commit synchronized release evidence
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "release evidence already synchronized"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -m "chore: sync ${RELEASE_TAG} release evidence"
+            git push
+          fi
+      - name: Create the coordinated landing tag
+        shell: bash
+        run: |
+          if git rev-parse "$RELEASE_TAG" >/dev/null 2>&1; then
+            test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)" || {
+              echo "landing tag $RELEASE_TAG already points to a different commit" >&2
+              exit 1
+            }
+          else
+            git tag -a "$RELEASE_TAG" -m "Pendulum Lab coordinated release $RELEASE_TAG"
+            git push origin "$RELEASE_TAG"
+          fi
+      - name: Prepare immutable Pages artifact
+        shell: bash
+        run: |
+          mkdir -p _site
+          cp index.html ko.html 404.html robots.txt sitemap.xml _headers _site/
+          mkdir -p _site/assets
+          rsync -a assets/ _site/assets/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy-pages:
+    needs: gate-and-tag
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the synchronized landing release
+        id: deployment
+        uses: actions/deploy-pages@v4
