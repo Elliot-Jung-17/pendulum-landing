@@ -1,8 +1,8 @@
 {
   "schemaVersion": "pendulum-changelog-highlights/v1",
-  "generatedAt": "2026-07-13T05:07:13.260Z",
-  "sourceCommit": "01d6ec397a862df99c2ec0d5879b075eb8a2124e",
-  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/01d6ec397a862df99c2ec0d5879b075eb8a2124e/CHANGELOG.md",
+  "generatedAt": "2026-07-13T05:23:43.425Z",
+  "sourceCommit": "e2bbe5bba7c2d49097b6df542fbf2a509cdebba0",
+  "sourceUrl": "https://github.com/elliotjung/pendulum-lab/blob/e2bbe5bba7c2d49097b6df542fbf2a509cdebba0/CHANGELOG.md",
   "highlights": [
     {
       "title": "Prettier is now an enforced gate, not just a config",
