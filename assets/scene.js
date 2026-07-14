@@ -1,9 +1,10 @@
 // ============================================================================
 // PENDULUM LAB — live hero instrument
-// A physically integrated double pendulum, rendered as a metallic 3D sculpture
-// with cyan/violet trajectory memory. The canvas is decorative, but the motion
-// is not arbitrary: both the visible pendulum and its nearby shadow trajectory
-// advance through the same shared RK4 kernel used by the mini lab.
+// A physically integrated double pendulum, rendered as a chrome sculpture with
+// cyan/violet trajectory memory, glitter dust, and an anchor glint — the same
+// composition as the static hero artwork, but alive. The canvas is decorative,
+// yet the motion is not arbitrary: both the visible pendulum and its nearby
+// shadow trajectory advance through the shared RK4 kernel used by the mini lab.
 // ============================================================================
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -12,8 +13,8 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
 
-const CYAN = new THREE.Color('#28dfff');
-const VIOLET = new THREE.Color('#8f6bff');
+const CYAN = new THREE.Color('#2fe0ff');
+const VIOLET = new THREE.Color('#8f5bff');
 const ICE = new THREE.Color('#dff8ff');
 const canvas = document.getElementById('hero-canvas');
 const query = new URLSearchParams(window.location.search);
@@ -39,6 +40,9 @@ let shadow;
 let firstTrail;
 let secondTrail;
 let shadowTrail;
+let cyanDust;
+let violetDust;
+let glint;
 let cyanLight;
 let violetLight;
 let width = window.innerWidth;
@@ -66,12 +70,64 @@ let dragStart = 0;
 let manualRotation = 0;
 let dragVelocity = 0;
 
-function deterministicRandom() {
-  let seed = 0x51f15e;
+function deterministicRandom(seed = 0x51f15e) {
   return () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 0x100000000;
   };
+}
+
+// Soft round sprite shared by every additive point cloud — square GL points
+// read as pixels; a radial falloff reads as light.
+let glowTexture;
+function makeGlowTexture() {
+  if (glowTexture) return glowTexture;
+  const size = 64;
+  const surface = document.createElement('canvas');
+  surface.width = size;
+  surface.height = size;
+  const ctx = surface.getContext('2d');
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gradient.addColorStop(0, 'rgba(255,255,255,1)');
+  gradient.addColorStop(0.32, 'rgba(255,255,255,.5)');
+  gradient.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  glowTexture = new THREE.CanvasTexture(surface);
+  glowTexture.colorSpace = THREE.SRGBColorSpace;
+  return glowTexture;
+}
+
+// Four-point star flare for the anchor mount — the artwork's signature glint.
+function makeGlintTexture() {
+  const size = 128;
+  const surface = document.createElement('canvas');
+  surface.width = size;
+  surface.height = size;
+  const ctx = surface.getContext('2d');
+  const c = size / 2;
+  const core = ctx.createRadialGradient(c, c, 0, c, c, c * 0.42);
+  core.addColorStop(0, 'rgba(255,255,255,1)');
+  core.addColorStop(0.4, 'rgba(214,240,255,.55)');
+  core.addColorStop(1, 'rgba(214,240,255,0)');
+  ctx.fillStyle = core;
+  ctx.fillRect(0, 0, size, size);
+  ctx.globalCompositeOperation = 'lighter';
+  [[c, 4, 0], [4, c, Math.PI / 2]].forEach(([, , angle]) => {
+    ctx.save();
+    ctx.translate(c, c);
+    ctx.rotate(angle);
+    const beam = ctx.createLinearGradient(-c, 0, c, 0);
+    beam.addColorStop(0, 'rgba(190,230,255,0)');
+    beam.addColorStop(0.5, 'rgba(240,250,255,.9)');
+    beam.addColorStop(1, 'rgba(190,230,255,0)');
+    ctx.fillStyle = beam;
+    ctx.fillRect(-c, -1.6, size, 3.2);
+    ctx.restore();
+  });
+  const texture = new THREE.CanvasTexture(surface);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 function createTrail(color, capacity, opacity) {
@@ -92,13 +148,43 @@ function createTrail(color, capacity, opacity) {
       depthWrite: false,
     }),
   );
+  const sprite = makeGlowTexture();
   const sparks = new THREE.Points(
     geometry,
     new THREE.PointsMaterial({
+      map: sprite,
       vertexColors: true,
       transparent: true,
-      opacity: opacity * 0.54,
-      size: compact ? 0.026 : 0.036,
+      opacity: opacity * 0.6,
+      size: compact ? 0.034 : 0.05,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  // Two wider passes over the same geometry wrap the line in the hazy neon
+  // envelope of the reference artwork — no extra buffers, only draw calls.
+  const halo = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      map: sprite,
+      vertexColors: true,
+      transparent: true,
+      opacity: opacity * 0.24,
+      size: compact ? 0.1 : 0.15,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  const haze = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      map: sprite,
+      vertexColors: true,
+      transparent: true,
+      opacity: opacity * 0.085,
+      size: compact ? 0.26 : 0.4,
       sizeAttenuation: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -112,6 +198,8 @@ function createTrail(color, capacity, opacity) {
   return {
     line,
     sparks,
+    halo,
+    haze,
     push(point) {
       ring[cursor].copy(point);
       cursor = (cursor + 1) % capacity;
@@ -138,48 +226,112 @@ function createTrail(color, capacity, opacity) {
   };
 }
 
+// Glitter dust: a deterministic scatter of short-lived sparkles hugging each
+// trajectory ribbon, like powdered light shaken off the moving bob.
+function createDust(color, capacity, size, spread) {
+  const positions = new Float32Array(capacity * 3);
+  const colors = new Float32Array(capacity * 3);
+  const energies = new Float32Array(capacity);
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  geometry.setDrawRange(0, 0);
+  const points = new THREE.Points(
+    geometry,
+    new THREE.PointsMaterial({
+      map: makeGlowTexture(),
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.6,
+      size,
+      sizeAttenuation: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    }),
+  );
+  const ring = Array.from({ length: capacity }, () => new THREE.Vector3());
+  let cursor = 0;
+  let count = 0;
+
+  return {
+    points,
+    push(point, rng) {
+      ring[cursor].set(
+        point.x + (rng() - 0.5) * spread,
+        point.y + (rng() - 0.5) * spread,
+        point.z + (rng() - 0.5) * spread * 0.8,
+      );
+      energies[cursor] = 0.3 + rng() * 0.7;
+      cursor = (cursor + 1) % capacity;
+      count = Math.min(count + 1, capacity);
+    },
+    sync() {
+      const start = (cursor - count + capacity) % capacity;
+      for (let i = 0; i < count; i += 1) {
+        const slot = (start + i) % capacity;
+        const point = ring[slot];
+        const offset = i * 3;
+        const fade = Math.pow((i + 1) / count, 1.9) * energies[slot];
+        positions[offset] = point.x;
+        positions[offset + 1] = point.y;
+        positions[offset + 2] = point.z;
+        colors[offset] = color.r * fade;
+        colors[offset + 1] = color.g * fade;
+        colors[offset + 2] = color.b * fade;
+      }
+      geometry.setDrawRange(0, count);
+      geometry.attributes.position.needsUpdate = true;
+      geometry.attributes.color.needsUpdate = true;
+      geometry.computeBoundingSphere();
+    },
+  };
+}
+
+const dustRandom = deterministicRandom(0x9e3779b9);
+
 function createPendulum({ ghost = false } = {}) {
   const group = new THREE.Group();
   const metal = new THREE.MeshStandardMaterial({
-    color: ghost ? 0x8970d9 : 0xb7c7dc,
-    metalness: 0.96,
-    roughness: 0.2,
+    color: ghost ? 0x8970d9 : 0xd9e4f2,
+    metalness: 1,
+    roughness: ghost ? 0.24 : 0.12,
     transparent: ghost,
     opacity: ghost ? 0.18 : 1,
-    emissive: ghost ? 0x422a8f : 0x101a2c,
-    emissiveIntensity: ghost ? 0.38 : 0.12,
+    emissive: ghost ? 0x422a8f : 0x0d1626,
+    emissiveIntensity: ghost ? 0.38 : 0.1,
   });
   const firstMass = new THREE.MeshPhysicalMaterial({
-    color: ghost ? 0x7b63cb : 0x64ddff,
-    metalness: 0.76,
-    roughness: 0.14,
+    color: ghost ? 0x7b63cb : 0x53e4ff,
+    metalness: 0.72,
+    roughness: 0.1,
     clearcoat: 1,
-    clearcoatRoughness: 0.12,
-    emissive: ghost ? 0x392273 : 0x087a9b,
-    emissiveIntensity: ghost ? 0.35 : 0.82,
+    clearcoatRoughness: 0.08,
+    emissive: ghost ? 0x392273 : 0x0a90b6,
+    emissiveIntensity: ghost ? 0.35 : 0.95,
     transparent: ghost,
     opacity: ghost ? 0.16 : 1,
   });
   const secondMass = new THREE.MeshPhysicalMaterial({
-    color: ghost ? 0x574696 : 0x9d78ff,
-    metalness: 0.82,
-    roughness: 0.12,
+    color: ghost ? 0x574696 : 0x9d6bff,
+    metalness: 0.78,
+    roughness: 0.09,
     clearcoat: 1,
-    clearcoatRoughness: 0.1,
-    emissive: 0x45258f,
-    emissiveIntensity: ghost ? 0.24 : 0.74,
+    clearcoatRoughness: 0.08,
+    emissive: 0x4c27b8,
+    emissiveIntensity: ghost ? 0.24 : 0.88,
     transparent: ghost,
     opacity: ghost ? 0.14 : 1,
   });
 
   const rodGeometry = new THREE.CylinderGeometry(ghost ? 0.016 : 0.025, ghost ? 0.016 : 0.025, 1, 12);
-  const ballGeometry = new THREE.SphereGeometry(ghost ? 0.085 : 0.13, compact ? 18 : 28, compact ? 12 : 20);
+  const ballGeometry = new THREE.SphereGeometry(ghost ? 0.085 : 0.13, compact ? 18 : 30, compact ? 12 : 22);
   const rod1 = new THREE.Mesh(rodGeometry, metal);
   const rod2 = new THREE.Mesh(rodGeometry, metal);
   const bob1 = new THREE.Mesh(ballGeometry, firstMass);
   const bob2 = new THREE.Mesh(ballGeometry, secondMass);
-  group.add(rod1, rod2, bob1, bob2);
-  return { group, rod1, rod2, bob1, bob2 };
+  const elbow = new THREE.Mesh(new THREE.SphereGeometry(ghost ? 0.045 : 0.062, 18, 12), metal);
+  group.add(rod1, rod2, bob1, bob2, elbow);
+  return { group, rod1, rod2, bob1, bob2, elbow };
 }
 
 function setRod(mesh, from, to) {
@@ -214,24 +366,36 @@ function updatePendulum(model, points) {
   setRod(model.rod2, points.first, points.second);
   model.bob1.position.copy(points.first);
   model.bob2.position.copy(points.second);
+  model.elbow.position.copy(points.first);
 }
 
 function buildAnchor() {
   const hub = new THREE.Group();
   const torusMaterial = new THREE.MeshStandardMaterial({
-    color: 0xc8d8ec,
-    metalness: 0.98,
-    roughness: 0.14,
-    emissive: 0x13223b,
-    emissiveIntensity: 0.28,
+    color: 0xd4e2f2,
+    metalness: 1,
+    roughness: 0.1,
+    emissive: 0x16263f,
+    emissiveIntensity: 0.3,
   });
   const ring = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.035, 14, 42), torusMaterial);
   const core = new THREE.Mesh(
     new THREE.SphereGeometry(0.09, 24, 16),
-    new THREE.MeshPhysicalMaterial({ color: 0xe6f6ff, metalness: 0.86, roughness: 0.12, clearcoat: 1 }),
+    new THREE.MeshPhysicalMaterial({ color: 0xeaf7ff, metalness: 0.9, roughness: 0.08, clearcoat: 1 }),
   );
   hub.add(ring, core);
   hub.position.copy(anchor);
+
+  glint = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeGlintTexture(),
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  }));
+  glint.position.copy(anchor);
+  glint.scale.set(0.92, 0.92, 1);
+  stage.add(glint);
   return hub;
 }
 
@@ -262,6 +426,27 @@ function buildGrid() {
     );
     stage.add(orbit);
   });
+
+  // The artwork's wide dashed survey orbit, swept below the mount.
+  const dashPoints = [];
+  for (let i = 0; i <= 180; i += 1) {
+    const angle = (i / 180) * Math.PI * 2;
+    dashPoints.push(new THREE.Vector3(Math.cos(angle) * 2.95, anchor.y - 0.25 + Math.sin(angle) * 2.5, -0.72));
+  }
+  const dashed = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(dashPoints),
+    new THREE.LineDashedMaterial({
+      color: 0x9db8dc,
+      transparent: true,
+      opacity: compact ? 0.12 : 0.18,
+      dashSize: 0.085,
+      gapSize: 0.16,
+      depthWrite: false,
+    }),
+  );
+  dashed.computeLineDistances();
+  dashed.rotation.z = 0.32;
+  stage.add(dashed);
 }
 
 function buildParticles() {
@@ -288,10 +473,11 @@ function buildParticles() {
   particles = new THREE.Points(
     geometry,
     new THREE.PointsMaterial({
-      size: compact ? 0.018 : 0.027,
+      map: makeGlowTexture(),
+      size: compact ? 0.024 : 0.036,
       vertexColors: true,
       transparent: true,
-      opacity: compact ? 0.48 : 0.68,
+      opacity: compact ? 0.5 : 0.7,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     }),
@@ -305,6 +491,9 @@ function pushCurrentTrail() {
   firstTrail.push(current.first);
   secondTrail.push(current.second);
   shadowTrail.push(nearby.second);
+  cyanDust.push(current.first, dustRandom);
+  violetDust.push(current.second, dustRandom);
+  violetDust.push(current.second, dustRandom);
   updatePendulum(primary, current);
   updatePendulum(shadow, nearby);
 }
@@ -317,6 +506,14 @@ function stepSimulation(fixedStep) {
   if (trailTick % (compact ? 4 : 3) === 0) pushCurrentTrail();
 }
 
+function syncTrails() {
+  firstTrail.sync();
+  secondTrail.sync();
+  shadowTrail.sync();
+  cyanDust.sync();
+  violetDust.sync();
+}
+
 function prewarm() {
   const fixedStep = 1 / 240;
   // Land the deterministic capture on a legible, downward-opening pose while
@@ -324,9 +521,7 @@ function prewarm() {
   const steps = captureMode ? 3112 : compact ? 1560 : 2800;
   for (let i = 0; i < steps; i += 1) stepSimulation(fixedStep);
   pushCurrentTrail();
-  firstTrail.sync();
-  secondTrail.sync();
-  shadowTrail.sync();
+  syncTrails();
 }
 
 function buildScene() {
@@ -346,12 +541,18 @@ function buildScene() {
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, compact ? 1.2 : 1.55));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.08;
+  renderer.toneMappingExposure = 1.12;
 
-  scene.add(new THREE.HemisphereLight(0x5277a9, 0x02040b, 1.25));
-  const keyLight = new THREE.DirectionalLight(0xd7e9ff, 2.8);
+  // Chrome comes from analytic lights alone: an IBL/PMREM pass looked richer
+  // but its per-load shader-compile burst blew the mobile TBT budget, so a
+  // cool key light plus a violet rim stand in for the environment.
+  scene.add(new THREE.HemisphereLight(0x5277a9, 0x02040b, 1.2));
+  const keyLight = new THREE.DirectionalLight(0xd7e9ff, 3.0);
   keyLight.position.set(-3, 5, 5);
   scene.add(keyLight);
+  const rimLight = new THREE.DirectionalLight(0x9d78ff, 1.4);
+  rimLight.position.set(5.5, -2, -3.5);
+  scene.add(rimLight);
   cyanLight = new THREE.PointLight(CYAN, 18, 8, 2);
   cyanLight.position.set(1.4, 1.2, 2.2);
   scene.add(cyanLight);
@@ -364,10 +565,15 @@ function buildScene() {
   buildGrid();
   buildParticles();
 
-  firstTrail = createTrail(CYAN, compact ? 190 : 330, 0.82);
-  secondTrail = createTrail(VIOLET, compact ? 260 : 460, 0.94);
-  shadowTrail = createTrail(ICE, compact ? 170 : 300, 0.34);
-  [firstTrail, secondTrail, shadowTrail].forEach((trail) => stage.add(trail.line, trail.sparks));
+  firstTrail = createTrail(CYAN, compact ? 190 : 340, 0.82);
+  secondTrail = createTrail(VIOLET, compact ? 260 : 520, 0.94);
+  shadowTrail = createTrail(ICE, compact ? 170 : 300, 0.3);
+  [firstTrail, secondTrail, shadowTrail].forEach((trail) => {
+    stage.add(trail.line, trail.sparks, trail.halo, trail.haze);
+  });
+  cyanDust = createDust(CYAN, compact ? 200 : 380, compact ? 0.05 : 0.062, 0.15);
+  violetDust = createDust(VIOLET, compact ? 340 : 700, compact ? 0.05 : 0.066, 0.19);
+  stage.add(cyanDust.points, violetDust.points);
 
   primary = createPendulum();
   shadow = createPendulum({ ghost: true });
@@ -378,7 +584,7 @@ function buildScene() {
   if (!compact) {
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(scene, camera));
-    bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 0.9, 0.52, 0.095);
+    bloom = new UnrealBloomPass(new THREE.Vector2(width, height), 1.0, 0.58, 0.085);
     composer.addPass(bloom);
     composer.addPass(new OutputPass());
   }
@@ -446,11 +652,7 @@ function advance(elapsed) {
   const nearby = pointsFromState(shadowState, 0.18);
   updatePendulum(primary, current);
   updatePendulum(shadow, nearby);
-  if (trailTick % (compact ? 8 : 6) === 0) {
-    firstTrail.sync();
-    secondTrail.sync();
-    shadowTrail.sync();
-  }
+  if (trailTick % (compact ? 8 : 6) === 0) syncTrails();
 }
 
 function renderFrame({ frozen = false } = {}) {
@@ -470,6 +672,11 @@ function renderFrame({ frozen = false } = {}) {
   particles.rotation.z += elapsed * 0.006;
   cyanLight.intensity = 17 + Math.sin(simulationTime * 0.7) * 2.4;
   violetLight.intensity = 16 + Math.cos(simulationTime * 0.61) * 2.2;
+  if (glint) {
+    glint.material.opacity = 0.74 + Math.sin(simulationTime * 1.7) * 0.14;
+    const glintScale = 0.86 + Math.sin(simulationTime * 1.21) * 0.07;
+    glint.scale.set(glintScale, glintScale, 1);
+  }
   camera.position.x += (pointer.x * 0.5 - camera.position.x) * 0.035;
   camera.position.y += ((0.12 - pointer.y * 0.28) - camera.position.y) * 0.035;
   camera.lookAt(width < 760 ? 0 : 1.3, width < 760 ? -0.4 : 0.05, 0);

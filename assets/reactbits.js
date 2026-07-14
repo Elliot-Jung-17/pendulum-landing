@@ -114,18 +114,23 @@
     }
   }
 
+  function finishScramble(job) {
+    const index = scrambleJobs.indexOf(job);
+    if (index === -1) return;
+    clearTimeout(job.deadline);
+    for (const item of job.nodes) item.node.nodeValue = item.base; // exact restore
+    job.el.classList.remove('is-decrypting');
+    job.el.classList.add('is-decrypted');
+    scrambleJobs.splice(index, 1);
+  }
+
   function tickScramble(now) {
     for (let i = scrambleJobs.length - 1; i >= 0; i--) {
       const job = scrambleJobs[i];
       if (now < job.start) { continue; }              // held fully scrambled
       const t = Math.min(1, (now - job.start) / job.duration);
       renderScramble(job, Math.floor(job.total * t));
-      if (t >= 1) {
-        for (const item of job.nodes) item.node.nodeValue = item.base; // exact restore
-        job.el.classList.remove('is-decrypting');
-        job.el.classList.add('is-decrypted');
-        scrambleJobs.splice(i, 1);
-      }
+      if (t >= 1) finishScramble(job);
     }
     if (scrambleJobs.length) requestAnimationFrame(tickScramble);
     else scrambleTicking = false;
@@ -151,6 +156,9 @@
     el.classList.add('is-decrypting');
     renderScramble(job, 0);                            // show ciphertext immediately
     scrambleJobs.push(job);
+    // rAF can stall for seconds while the hero's WebGL shaders compile; a
+    // wall-clock deadline guarantees the real copy is always restored.
+    job.deadline = setTimeout(() => finishScramble(job), (delay || 0) + job.duration + 400);
     if (!scrambleTicking) { scrambleTicking = true; requestAnimationFrame(tickScramble); }
   }
 
