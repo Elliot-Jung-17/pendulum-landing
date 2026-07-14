@@ -10,7 +10,10 @@
   'use strict';
 
   const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || captureMode;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    || window.matchMedia('(max-width: 720px)').matches
+    || navigator.connection?.saveData === true
+    || captureMode;
   const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
   const hasGsap = typeof window.gsap !== 'undefined';
   const $ = (s, r = document) => r.querySelector(s);
