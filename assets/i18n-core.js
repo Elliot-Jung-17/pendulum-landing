@@ -68,6 +68,38 @@
     'mutation tested': '뮤테이션 테스트',
     'Scroll to descend': '스크롤해 내려가기',
     'Drag to orbit · move to parallax': '드래그로 궤도 회전 · 마우스로 시차 효과',
+    // ---- scroll-driven 3D descent -----------------------------------------
+    'PHASE DESCENT': '위상공간 하강',
+    '01 · RELEASE': '01 · 놓기',
+    '01 · Release': '01 · 놓기',
+    '02 · Divergence': '02 · 발산',
+    '03 · Memory': '03 · 궤적 기억',
+    '04 · Measure': '04 · 측정',
+    'Scroll-Driven Chaos': '스크롤로 움직이는 카오스',
+    'Fall through phase space.': '위상공간을 가로질러 내려가다.',
+    'Scroll and the live double pendulum rolls out of the hero, turns through depth, and descends with you. This is not a video loop: the rods keep solving the same 240 Hz RK4 system while the camera follows.':
+      '스크롤하면 살아 있는 이중진자가 첫 화면을 벗어나 깊이 회전하며 함께 내려갑니다. 영상 반복 재생이 아닙니다. 카메라가 따라가는 동안 두 막대는 같은 240 Hz RK4 계를 계속 계산합니다.',
+    'A deterministic phase portrait remains available when motion, data, or graphics preferences keep the live renderer off. The same initial state opens in the hands-on console below.':
+      '동작, 데이터 또는 그래픽 환경설정으로 실시간 렌더러가 꺼져도 결정론적 위상 초상은 그대로 제공됩니다. 같은 초기 상태를 아래의 직접 조작 콘솔에서 열 수 있습니다.',
+    'Live equations · live camera': '실시간 방정식 · 실시간 카메라',
+    'Static evidence view · motion preference respected': '정적 근거 화면 · 동작 환경설정 존중',
+    'One state becomes two futures.': '한 상태가 두 개의 미래가 된다.',
+    'The pale shadow begins only 8×10⁻⁴ radians away. Its orbit peels from the primary trajectory as the sculpture completes a full turn.':
+      '옅은 그림자는 불과 8×10⁻⁴ 라디안 떨어진 곳에서 시작합니다. 조형물이 한 바퀴 도는 동안 그 궤도는 주 궤적에서 갈라집니다.',
+    'The pale reference state begins only 8×10⁻⁴ radians away. The static traces preserve the two initial conditions without implying that animation is running.':
+      '옅은 기준 상태는 불과 8×10⁻⁴ 라디안 떨어진 곳에서 시작합니다. 정적 궤적은 애니메이션이 실행된다고 암시하지 않으면서 두 초기 조건을 보존합니다.',
+    'The path becomes the instrument.': '지나온 길 자체가 계측기가 된다.',
+    'Cyan and violet histories remain suspended in depth. Every turn exposes structure that a flat trace hides: folds, near returns, and the first visible loss of predictability.':
+      '시안과 보라색 이력이 깊이 속에 떠 있습니다. 회전할 때마다 평면 궤적이 숨기던 접힘, 가까운 회귀, 예측 가능성이 처음 무너지는 순간이 드러납니다.',
+    'Cyan and violet histories preserve folds, near returns, and the first visible loss of predictability in a motion-free reference image.':
+      '시안과 보라색 이력은 움직임 없는 기준 이미지에서 접힘, 가까운 회귀, 예측 가능성이 처음 무너지는 순간을 보존합니다.',
+    'fixed-step': '고정 시간 간격',
+    'deterministic': '결정론적',
+    'replayable': '재생 가능',
+    'Then turn the spectacle into evidence.': '장관을 검증 가능한 근거로 바꾸다.',
+    'The descent resolves into the hands-on trajectory console below. Change the release, damping, and initial separation — then carry the exact state into the full laboratory.':
+      '하강의 끝은 아래의 직접 조작 궤적 콘솔로 이어집니다. 놓는 각도, 감쇠, 초기 간격을 바꾸고 그 정확한 상태를 전체 실험실로 가져가세요.',
+    'Take control': '직접 조작하기',
     // ---- trajectory console -------------------------------------------------
     'Trajectory Console': '궤적 콘솔',
     'Chaos you can feel before the app even opens.': '앱을 열기도 전에 체감되는 카오스.',
@@ -128,8 +160,8 @@
     // ---- modes -----------------------------------------------------------------
     'Three Workspaces': '세 가지 워크스페이스',
     'From first swing to peer review — the interface grows with you.': '첫 스윙부터 동료 심사까지 — 인터페이스가 당신과 함께 자랍니다.',
-    'Every launch opens a workspace chooser. A four-step spotlight tour greets first-time visitors, every menu entry explains itself in one plain-language line — in English or Korean — and a command palette (Ctrl+K) reaches everything.':
-      '실행할 때마다 워크스페이스 선택기가 열립니다. 첫 방문자는 4단계 스포트라이트 투어가 맞이하고, 모든 메뉴 항목은 쉬운 말 한 줄로 스스로를 설명하며 — 영어와 한국어 모두 — 커맨드 팔레트(Ctrl+K)로 어디든 닿습니다.',
+    'Every launch opens a workspace chooser. A five-step spotlight tour greets first-time visitors, every menu entry explains itself in one plain-language line — in English or Korean — and a command palette (Ctrl+K) reaches everything.':
+      '실행할 때마다 워크스페이스 선택기가 열립니다. 첫 방문자는 5단계 스포트라이트 투어가 맞이하고, 모든 메뉴 항목은 쉬운 말 한 줄로 스스로를 설명하며 — 영어와 한국어 모두 — 커맨드 팔레트(Ctrl+K)로 어디든 닿습니다.',
     'Watch it move': '움직임을 지켜보기',
     'A focused simulator: the live pendulum, one-click presets from': '집중형 시뮬레이터: 살아 있는 진자, 원클릭 프리셋은',
     'Butterfly': '나비',
@@ -283,8 +315,8 @@
     'Do not take the numbers on trust': '숫자를 그대로 믿지 마세요',
     'Open the evidence ledger and verify each claim yourself.': '증거 원장을 열어 각 주장을 직접 검증하세요.',
     'Inspect the reviewer console': '리뷰어 콘솔에서 검증하기',
-    'Watch the 67-second narrated demo': '67초 내레이션 데모 보기',
-    'Download captions': '자막 내려받기',
+    'Launch the guided live demo': '한국어 가이드 데모 실행',
+    'Read the methods paper': '방법론 논문 읽기',
     // ---- changelog ---------------------------------------------------------
     'Latest release signals': '최신 릴리스 소식',
     'What changed — from the source, not a marketing rewrite.': '마케팅 문구가 아닌 원본에서 가져온 변경 사항.',

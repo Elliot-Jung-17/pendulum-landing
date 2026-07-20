@@ -1,7 +1,10 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://127.0.0.1:4177/"],
+      "url": [
+        "http://127.0.0.1:4177/",
+        "http://127.0.0.1:4177/ko.html?lang=ko"
+      ],
       "startServerCommand": "node scripts/static-server.mjs 4177",
       "startServerReadyPattern": "Serving HTTP",
       "numberOfRuns": 3,

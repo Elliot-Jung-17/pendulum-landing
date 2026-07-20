@@ -18,10 +18,14 @@ const VIOLET = new THREE.Color('#8f5bff');
 const ICE = new THREE.Color('#dff8ff');
 const canvas = document.getElementById('hero-canvas');
 const query = new URLSearchParams(window.location.search);
-const captureMode = query.has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
-const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const reducedData = window.matchMedia('(prefers-reduced-data: reduce)').matches;
-const compact = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches;
+const queryFlag = (name) => /^(?:1|true|yes)$/i.test(query.get(name) || '');
+const captureMode = queryFlag('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const reducedDataQuery = window.matchMedia('(prefers-reduced-data: reduce)');
+const compactQuery = window.matchMedia('(max-width: 720px), (pointer: coarse)');
+let reducedMotion = reducedMotionQuery.matches;
+let reducedData = reducedDataQuery.matches;
+let compact = compactQuery.matches;
 const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2;
 const staticHero = reducedMotion || reducedData || lowMemory;
 
@@ -54,6 +58,13 @@ let lastFrame = performance.now();
 let simulationAccumulator = 0;
 let simulationTime = 0;
 let trailTick = 0;
+let trailsDirty = false;
+let trailSyncElapsed = 0;
+let stageBaseX = 0;
+let stageBaseY = 0;
+let stageBaseScale = 1;
+let telemetryTick = 0;
+const coordinateReadout = document.querySelector('[data-descent-coordinate]');
 
 const params = Object.freeze({ m1: 1, m2: 1, l1: 1.14, l2: 1.02, g: 9.81 });
 const state = [2.34, 2.72, 0, 0];
@@ -64,11 +75,15 @@ const anchor = new THREE.Vector3(0, 1.55, 0);
 const yAxis = new THREE.Vector3(0, 1, 0);
 const direction = new THREE.Vector3();
 const midpoint = new THREE.Vector3();
+const currentPoints = { first: new THREE.Vector3(), second: new THREE.Vector3() };
+const nearbyPoints = { first: new THREE.Vector3(), second: new THREE.Vector3() };
 const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
 let dragging = false;
 let dragStart = 0;
 let manualRotation = 0;
 let dragVelocity = 0;
+let lastPaint = 0;
+let regionObserver = null;
 
 function deterministicRandom(seed = 0x51f15e) {
   return () => {
@@ -137,6 +152,7 @@ function createTrail(color, capacity, opacity) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setDrawRange(0, 0);
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 12);
 
   const line = new THREE.Line(
     geometry,
@@ -221,7 +237,6 @@ function createTrail(color, capacity, opacity) {
       geometry.setDrawRange(0, count);
       geometry.attributes.position.needsUpdate = true;
       geometry.attributes.color.needsUpdate = true;
-      geometry.computeBoundingSphere();
     },
   };
 }
@@ -236,6 +251,7 @@ function createDust(color, capacity, size, spread) {
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   geometry.setDrawRange(0, 0);
+  geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 12);
   const points = new THREE.Points(
     geometry,
     new THREE.PointsMaterial({
@@ -282,7 +298,6 @@ function createDust(color, capacity, size, spread) {
       geometry.setDrawRange(0, count);
       geometry.attributes.position.needsUpdate = true;
       geometry.attributes.color.needsUpdate = true;
-      geometry.computeBoundingSphere();
     },
   };
 }
@@ -343,22 +358,22 @@ function setRod(mesh, from, to) {
   mesh.quaternion.setFromUnitVectors(yAxis, direction.normalize());
 }
 
-function pointsFromState(source, phase = 0) {
+function pointsFromState(source, phase, points) {
   const theta1 = source[0];
   const theta2 = source[1];
   const depth1 = Math.sin(simulationTime * 0.38 + phase) * 0.045;
   const depth2 = Math.sin(simulationTime * 0.51 + phase + 0.8) * 0.09;
-  const first = new THREE.Vector3(
+  points.first.set(
     anchor.x + params.l1 * Math.sin(theta1),
     anchor.y - params.l1 * Math.cos(theta1),
     depth1,
   );
-  const second = new THREE.Vector3(
-    first.x + params.l2 * Math.sin(theta2),
-    first.y - params.l2 * Math.cos(theta2),
+  points.second.set(
+    points.first.x + params.l2 * Math.sin(theta2),
+    points.first.y - params.l2 * Math.cos(theta2),
     depth2,
   );
-  return { first, second };
+  return points;
 }
 
 function updatePendulum(model, points) {
@@ -486,8 +501,8 @@ function buildParticles() {
 }
 
 function pushCurrentTrail() {
-  const current = pointsFromState(state);
-  const nearby = pointsFromState(shadowState, 0.18);
+  const current = pointsFromState(state, 0, currentPoints);
+  const nearby = pointsFromState(shadowState, 0.18, nearbyPoints);
   firstTrail.push(current.first);
   secondTrail.push(current.second);
   shadowTrail.push(nearby.second);
@@ -496,6 +511,7 @@ function pushCurrentTrail() {
   violetDust.push(current.second, dustRandom);
   updatePendulum(primary, current);
   updatePendulum(shadow, nearby);
+  trailsDirty = true;
 }
 
 function stepSimulation(fixedStep) {
@@ -512,6 +528,8 @@ function syncTrails() {
   shadowTrail.sync();
   cyanDust.sync();
   violetDust.sync();
+  trailsDirty = false;
+  trailSyncElapsed = 0;
 }
 
 function prewarm() {
@@ -519,9 +537,44 @@ function prewarm() {
   // Land the deterministic capture on a legible, downward-opening pose while
   // retaining enough history to show the preceding chaotic loops.
   const steps = captureMode ? 3112 : compact ? 1560 : 2800;
-  for (let i = 0; i < steps; i += 1) stepSimulation(fixedStep);
-  pushCurrentTrail();
-  syncTrails();
+  if (captureMode) {
+    for (let i = 0; i < steps; i += 1) stepSimulation(fixedStep);
+    pushCurrentTrail();
+    syncTrails();
+    return Promise.resolve();
+  }
+
+  // Warm the deterministic history in short idle slices to avoid a startup
+  // long task on slower phones while preserving the exact same trajectory.
+  return new Promise((resolve) => {
+    let completed = 0;
+    const schedule = (callback) => {
+      if ('requestIdleCallback' in window) window.requestIdleCallback(callback, { timeout: 48 });
+      else window.setTimeout(() => callback(null), 0);
+    };
+    const chunk = (deadline) => {
+      const started = performance.now();
+      do {
+        const batchEnd = Math.min(completed + 32, steps);
+        while (completed < batchEnd) {
+          stepSimulation(fixedStep);
+          completed += 1;
+        }
+      } while (
+        completed < steps
+        && performance.now() - started < 7
+        && (!deadline || deadline.timeRemaining() > 1)
+      );
+      if (completed < steps) {
+        schedule(chunk);
+        return;
+      }
+      pushCurrentTrail();
+      syncTrails();
+      resolve();
+    };
+    schedule(chunk);
+  });
 }
 
 function buildScene() {
@@ -579,7 +632,6 @@ function buildScene() {
   shadow = createPendulum({ ghost: true });
   stage.add(shadow.group, primary.group, buildAnchor());
   positionStage();
-  prewarm();
 
   if (!compact) {
     composer = new EffectComposer(renderer);
@@ -595,22 +647,36 @@ function buildScene() {
     document.body.classList.remove('hero-live');
     document.body.classList.add('no-webgl');
   });
+  canvas.addEventListener('webglcontextrestored', () => {
+    document.body.classList.remove('no-webgl');
+    renderFrame({ frozen: true });
+    syncPlayback();
+  });
 }
 
 function positionStage() {
   const narrow = width < 760;
   const short = height < 680;
-  stage.position.set(narrow ? 0.18 : 2.3, narrow ? -1.1 : short ? -0.12 : 0.05, 0);
-  stage.scale.setScalar(narrow ? Math.min(0.76, width / 510) : short ? 0.94 : 1.18);
+  stageBaseX = narrow ? 0.18 : 2.3;
+  stageBaseY = narrow ? -1.1 : short ? -0.12 : 0.05;
+  stageBaseScale = narrow ? Math.min(0.76, width / 510) : short ? 0.94 : 1.18;
+  stage.position.set(stageBaseX, stageBaseY, 0);
+  stage.scale.setScalar(stageBaseScale);
 }
 
 function resize() {
   width = window.innerWidth;
   height = window.innerHeight;
+  compact = compactQuery.matches;
+  const pixelRatio = Math.min(window.devicePixelRatio || 1, compact ? 1.2 : 1.55);
+  renderer.setPixelRatio(pixelRatio);
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  if (composer) composer.setSize(width, height);
+  if (composer) {
+    composer.setPixelRatio?.(pixelRatio);
+    composer.setSize(width, height);
+  }
   if (bloom) bloom.setSize(width, height);
   positionStage();
 }
@@ -632,10 +698,17 @@ function bindInteraction() {
     canvas.classList.add('is-dragging');
     canvas.setPointerCapture?.(event.pointerId);
   });
-  window.addEventListener('pointerup', () => {
+  const finishDrag = (event) => {
+    if (event?.pointerId != null && canvas.hasPointerCapture?.(event.pointerId)) {
+      canvas.releasePointerCapture(event.pointerId);
+    }
     dragging = false;
     canvas.classList.remove('is-dragging');
-  }, { passive: true });
+  };
+  window.addEventListener('pointerup', finishDrag, { passive: true });
+  window.addEventListener('pointercancel', finishDrag, { passive: true });
+  canvas.addEventListener('lostpointercapture', finishDrag, { passive: true });
+  window.addEventListener('blur', finishDrag);
   window.addEventListener('resize', resize, { passive: true });
 }
 
@@ -648,11 +721,12 @@ function advance(elapsed) {
     simulationAccumulator -= fixedStep;
     safety += 1;
   }
-  const current = pointsFromState(state);
-  const nearby = pointsFromState(shadowState, 0.18);
+  const current = pointsFromState(state, 0, currentPoints);
+  const nearby = pointsFromState(shadowState, 0.18, nearbyPoints);
   updatePendulum(primary, current);
   updatePendulum(shadow, nearby);
-  if (trailTick % (compact ? 8 : 6) === 0) syncTrails();
+  trailSyncElapsed += elapsed;
+  if (trailsDirty && trailSyncElapsed >= (compact ? 1 / 22 : 1 / 30)) syncTrails();
 }
 
 function renderFrame({ frozen = false } = {}) {
@@ -663,13 +737,25 @@ function renderFrame({ frozen = false } = {}) {
 
   pointer.x += (pointer.targetX - pointer.x) * 0.055;
   pointer.y += (pointer.targetY - pointer.y) * 0.055;
-  dragVelocity *= 0.91;
+  dragVelocity *= Math.exp(-elapsed * 5.7);
   manualRotation += dragVelocity;
 
-  const scrollProgress = Math.min(1, (window.scrollY || 0) / Math.max(height, 1));
-  stage.rotation.y = manualRotation + pointer.x * 0.16 + Math.sin(simulationTime * 0.13) * 0.035;
-  stage.rotation.x = -0.035 + pointer.y * 0.055 + scrollProgress * 0.08;
+  const heroProgress = Math.min(1, (window.scrollY || 0) / Math.max(height, 1));
+  const orbitProgress = Math.max(0, Math.min(1, Number(window.__orbitScrollProgress) || 0));
+  const orbitEase = orbitProgress * orbitProgress * (3 - 2 * orbitProgress);
+  const scrollVelocity = Math.max(-1, Math.min(1, Number(window.__orbitScrollVelocity) || 0));
+  window.__orbitScrollVelocity = scrollVelocity * Math.exp(-elapsed * 9.1);
+  stage.rotation.y = manualRotation + pointer.x * 0.16 + Math.sin(simulationTime * 0.13) * 0.035
+    + orbitEase * Math.PI * 3.75 + scrollVelocity * 0.22;
+  stage.rotation.x = -0.035 + pointer.y * 0.055 + heroProgress * 0.035
+    + Math.sin(orbitEase * Math.PI * 1.5) * 0.32;
+  stage.rotation.z = Math.sin(orbitEase * Math.PI * 2) * 0.11 - orbitEase * 0.045;
+  stage.position.x = stageBaseX + Math.sin(orbitEase * Math.PI * 2.2) * (compact ? 0.18 : 0.72);
+  stage.position.y = stageBaseY - orbitEase * (compact ? 0.82 : 1.48);
+  stage.position.z = Math.sin(orbitEase * Math.PI) * 0.42;
+  stage.scale.setScalar(stageBaseScale * (1 + Math.sin(orbitEase * Math.PI) * 0.09 - orbitEase * 0.16));
   particles.rotation.z += elapsed * 0.006;
+  particles.rotation.y = orbitEase * Math.PI * 0.38;
   cyanLight.intensity = 17 + Math.sin(simulationTime * 0.7) * 2.4;
   violetLight.intensity = 16 + Math.cos(simulationTime * 0.61) * 2.2;
   if (glint) {
@@ -677,19 +763,36 @@ function renderFrame({ frozen = false } = {}) {
     const glintScale = 0.86 + Math.sin(simulationTime * 1.21) * 0.07;
     glint.scale.set(glintScale, glintScale, 1);
   }
-  camera.position.x += (pointer.x * 0.5 - camera.position.x) * 0.035;
-  camera.position.y += ((0.12 - pointer.y * 0.28) - camera.position.y) * 0.035;
-  camera.lookAt(width < 760 ? 0 : 1.3, width < 760 ? -0.4 : 0.05, 0);
+  const targetCameraX = pointer.x * 0.5 + Math.sin(orbitEase * Math.PI * 2) * (compact ? 0.18 : 0.7);
+  const targetCameraY = 0.12 - pointer.y * 0.28 - orbitEase * 0.24;
+  const targetCameraZ = 8.4 - Math.sin(orbitEase * Math.PI) * 1.08 + orbitEase * 0.52;
+  camera.position.x += (targetCameraX - camera.position.x) * 0.035;
+  camera.position.y += (targetCameraY - camera.position.y) * 0.035;
+  camera.position.z += (targetCameraZ - camera.position.z) * 0.035;
+  camera.lookAt(
+    (width < 760 ? 0 : 1.3) + Math.sin(orbitEase * Math.PI) * 0.28,
+    (width < 760 ? -0.4 : 0.05) - orbitEase * 0.42,
+    0,
+  );
+  camera.rotation.z += (Math.sin(orbitEase * Math.PI * 2) * 0.035 - camera.rotation.z) * 0.04;
 
-  if (composer) composer.render();
+  telemetryTick += 1;
+  if (coordinateReadout && document.body.classList.contains('orbit-descent-active') && telemetryTick % 12 === 0) {
+    const wrapAngle = (value) => ((value + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    coordinateReadout.textContent = `${wrapAngle(state[0]).toFixed(2)} / ${wrapAngle(state[1]).toFixed(2)}`;
+  }
+
+  if (composer && !compact) composer.render();
   else renderer.render(scene, camera);
   window.__heroPainted = true;
   document.body.classList.add('hero-live');
 }
 
-function loop() {
+function loop(timestamp) {
   if (!running) return;
   frameId = requestAnimationFrame(loop);
+  if (compact && timestamp - lastPaint < 1000 / 30) return;
+  lastPaint = timestamp;
   renderFrame();
 }
 
@@ -697,6 +800,7 @@ function start() {
   if (running || captureMode) return;
   running = true;
   lastFrame = performance.now();
+  lastPaint = 0;
   frameId = requestAnimationFrame(loop);
 }
 
@@ -707,27 +811,57 @@ function stop() {
 }
 
 function syncPlayback() {
-  if (visible && !document.hidden) start();
+  if (visible && !document.hidden && !reducedMotion && !reducedData) start();
   else stop();
 }
 
-try {
-  if (staticHero) {
-    canvas.style.display = 'none';
-    document.body.classList.add(reducedMotion ? 'reduced-motion-hero' : 'low-power-hero');
-    window.__heroPainted = true;
+function syncMediaPreferences() {
+  reducedMotion = reducedMotionQuery.matches;
+  reducedData = reducedDataQuery.matches;
+  compact = compactQuery.matches;
+  const fallback = reducedMotion || reducedData || lowMemory;
+  document.body.classList.toggle('reduced-motion-hero', reducedMotion);
+  document.body.classList.toggle('low-power-hero', !reducedMotion && (reducedData || lowMemory));
+  if (!renderer) return;
+  canvas.style.display = fallback ? 'none' : '';
+  if (fallback) {
+    document.body.classList.remove('hero-live');
+    stop();
   } else {
+    resize();
+    renderFrame({ frozen: true });
+    syncPlayback();
+  }
+}
+
+async function initializeHero() {
+  try {
+    if (staticHero) {
+      canvas.style.display = 'none';
+      document.body.classList.add(reducedMotion ? 'reduced-motion-hero' : 'low-power-hero');
+      window.__heroPainted = true;
+      return;
+    }
     buildScene();
     bindInteraction();
+    await prewarm();
     renderFrame({ frozen: true });
     if (!captureMode) {
       const hero = document.querySelector('.hero');
+      const descent = document.querySelector('#orbit-descent');
       if (hero && 'IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-          visible = entries.some((entry) => entry.isIntersecting);
+        visible = false;
+        const visibleRegions = new Set();
+        regionObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) visibleRegions.add(entry.target);
+            else visibleRegions.delete(entry.target);
+          });
+          visible = visibleRegions.size > 0;
           syncPlayback();
-        }, { rootMargin: '90% 0px 40% 0px' });
-        observer.observe(hero);
+        }, { rootMargin: compact ? '28% 0px 22% 0px' : '60% 0px 32% 0px' });
+        regionObserver.observe(hero);
+        if (descent) regionObserver.observe(descent);
       }
       document.addEventListener('visibilitychange', syncPlayback);
       syncPlayback();
@@ -740,12 +874,18 @@ try {
         return Math.hypot(state[0] - shadowState[0], state[1] - shadowState[1]);
       },
     };
+    [reducedMotionQuery, reducedDataQuery, compactQuery].forEach((media) => {
+      media.addEventListener?.('change', syncMediaPreferences);
+    });
+  } catch (error) {
+    console.warn('[hero] WebGL unavailable; using the static pendulum artwork', error);
+    stop();
+    regionObserver?.disconnect();
+    canvas.style.display = 'none';
+    document.body.classList.remove('hero-live');
+    document.body.classList.add('no-webgl');
+    window.__heroPainted = true;
   }
-} catch (error) {
-  console.warn('[hero] WebGL unavailable; using the static pendulum artwork', error);
-  stop();
-  canvas.style.display = 'none';
-  document.body.classList.remove('hero-live');
-  document.body.classList.add('no-webgl');
-  window.__heroPainted = true;
 }
+
+void initializeHero();

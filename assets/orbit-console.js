@@ -10,8 +10,10 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  const captureMode = new URLSearchParams(window.location.search).has('captureHero');
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches || captureMode;
+  const queryFlag = (name) => /^(?:1|true|yes)$/i.test(new URLSearchParams(window.location.search).get(name) || '');
+  const captureMode = queryFlag('captureHero');
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let reduced = reducedMotionQuery.matches || captureMode;
   const korean = document.documentElement.lang === 'ko';
   const lowPower = window.matchMedia('(max-width: 720px), (pointer: coarse)').matches
     || navigator.connection?.saveData === true
@@ -19,7 +21,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     || (typeof navigator.hardwareConcurrency === 'number' && navigator.hardwareConcurrency <= 4);
   const targetFps = lowPower ? 30 : 60;
   const frameInterval = 1000 / targetFps;
-  const physicsStepsPerFrame = lowPower ? 6 : 3;
+  const fixedStep = 1 / 150;
   const trailStride = lowPower ? 3 : 2;
   const readouts = {
     separation: document.querySelector('[data-orbit-readout="separation"]'),
@@ -43,10 +45,15 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   let raf = 0;
   let frame = 0;
   let pointerX = 0;
-  let pointerY = 0;
   let visible = false;
   let paused = false;
   let lastTick = 0;
+  let lastDraw = 0;
+  let physicsAccumulator = 0;
+  let warming = false;
+  let resetGeneration = 0;
+  let resetRaf = 0;
+  let cancelWarmChunk = null;
 
   const params = { m1: 1, m2: 1, l1: 1, l2: 1, g: 9.81 };
   const runtimeParams = { ...params };
@@ -96,7 +103,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   }
 
   function rk4Into(s, work, dt) {
-    runtimeParams.g = params.g + pointerY * 0.45;
+    runtimeParams.g = params.g;
     rk4StepDouble(s, runtimeParams, dt, work);
     const decay = Math.exp(-damping * dt);
     s[2] *= decay;
@@ -188,11 +195,12 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     pointInto(primary, pointA);
     pointInto(twin, pointB);
     const drift = Math.hypot(pointA.bx - pointB.bx, pointA.by - pointB.by);
-    const sep = Math.abs(primary[0] - twin[0]);
+    const delta = primary[0] - twin[0];
+    const sep = Math.abs(Math.atan2(Math.sin(delta), Math.cos(delta)));
     if (readouts.separation) readouts.separation.textContent = sep.toExponential(2) + ' rad';
     if (readouts.drift) readouts.drift.textContent = drift.toFixed(2) + ' px';
     if (readouts.trace) readouts.trace.textContent = trailA.len + ' pts';
-    if (readouts.mode) readouts.mode.textContent = paused ? 'paused' : reduced ? 'static' : visible && !document.hidden ? 'live' : 'standby';
+    if (readouts.mode) readouts.mode.textContent = warming ? 'warming' : paused ? 'paused' : reduced ? 'static' : visible && !document.hidden ? 'live' : 'standby';
   }
 
   function updateControlSurface() {
@@ -203,6 +211,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
         const url = new URL(controls.launch.href);
         url.searchParams.set('th1', initialTheta.toFixed(2));
         url.searchParams.set('gamma', damping.toFixed(2));
+        url.searchParams.set('g', params.g.toFixed(2));
         controls.launch.href = url.toString();
       } catch {
         /* keep the static fallback URL */
@@ -215,7 +224,23 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     trail.len = 0;
   }
 
+  function scheduleWarmChunk(callback) {
+    cancelWarmChunk?.();
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(callback, { timeout: 80 });
+      cancelWarmChunk = () => window.cancelIdleCallback(id);
+    } else {
+      const id = window.setTimeout(() => callback({ didTimeout: true, timeRemaining: () => 8 }), 0);
+      cancelWarmChunk = () => window.clearTimeout(id);
+    }
+  }
+
   function resetSimulation() {
+    const generation = ++resetGeneration;
+    cancelWarmChunk?.();
+    cancelWarmChunk = null;
+    stop();
+    warming = true;
     primary[0] = initialTheta;
     primary[1] = 2.64;
     primary[2] = 0;
@@ -227,16 +252,46 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
     clearTrail(trailA);
     clearTrail(trailB);
     frame = 0;
+    physicsAccumulator = 0;
+    lastTick = 0;
+    lastDraw = 0;
     const warmupSteps = reduced ? 180 : 80;
-    for (let i = 0; i < warmupSteps; i += 1) {
-      rk4Into(primary, workA, 1 / 150);
-      rk4Into(twin, workB, 1 / 150);
-      pushTrail();
-    }
-    draw();
-    updateReadouts();
+    let completed = 0;
     updateControlSurface();
     window.__orbitConsoleState = { initialTheta, damping };
+
+    function warmChunk(deadline) {
+      cancelWarmChunk = null;
+      if (generation !== resetGeneration) return;
+      const chunkStart = performance.now();
+      while (completed < warmupSteps
+        && (deadline.didTimeout || deadline.timeRemaining() > 1)
+        && performance.now() - chunkStart < 6) {
+        rk4Into(primary, workA, fixedStep);
+        rk4Into(twin, workB, fixedStep);
+        pushTrail();
+        completed += 1;
+      }
+      if (completed < warmupSteps) {
+        scheduleWarmChunk(warmChunk);
+        return;
+      }
+      warming = false;
+      draw();
+      updateReadouts();
+      if (visible && !paused && !reduced && !document.hidden) start();
+    }
+    scheduleWarmChunk(warmChunk);
+  }
+
+  function scheduleReset() {
+    updateControlSurface();
+    window.__orbitConsoleState = { initialTheta, damping };
+    if (resetRaf) return;
+    resetRaf = window.requestAnimationFrame(() => {
+      resetRaf = 0;
+      resetSimulation();
+    });
   }
 
   function draw() {
@@ -255,26 +310,34 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
 
   function tick(timestamp) {
     raf = 0;
-    if (reduced || !visible || document.hidden) {
+    if (reduced || !visible || document.hidden || warming) {
       updateReadouts();
       return;
     }
     raf = window.requestAnimationFrame(tick);
-    if (lastTick && timestamp - lastTick < frameInterval) return;
+    const elapsed = lastTick ? Math.min((timestamp - lastTick) / 1000, 0.08) : 0;
     lastTick = timestamp;
-    for (let i = 0; i < physicsStepsPerFrame; i += 1) {
-      rk4Into(primary, workA, 1 / 150);
-      rk4Into(twin, workB, 1 / 150);
+    physicsAccumulator += elapsed;
+    let steps = 0;
+    while (physicsAccumulator >= fixedStep && steps < 12) {
+      rk4Into(primary, workA, fixedStep);
+      rk4Into(twin, workB, fixedStep);
       pushTrail();
+      physicsAccumulator -= fixedStep;
+      steps += 1;
     }
+    if (steps === 12) physicsAccumulator = 0;
+    if (lastDraw && timestamp - lastDraw < frameInterval) return;
+    lastDraw = timestamp;
     draw();
     frame += 1;
     if (frame % 10 === 0) updateReadouts();
   }
 
   function start() {
-    if (!paused && !raf) {
+    if (!paused && !warming && !raf) {
       lastTick = 0;
+      lastDraw = 0;
       raf = window.requestAnimationFrame(tick);
     }
   }
@@ -286,7 +349,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
 
   function setVisible(nextVisible) {
     visible = nextVisible;
-    if (visible && !reduced && !document.hidden) start();
+    if (visible && !reduced && !warming && !document.hidden) start();
     else stop();
     updateReadouts();
   }
@@ -300,7 +363,7 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
         : korean ? '움직임 일시정지' : 'Pause motion';
     }
     if (paused) stop();
-    else if (visible && !reduced && !document.hidden) start();
+    else if (visible && !reduced && !warming && !document.hidden) start();
     updateReadouts();
   }
 
@@ -310,22 +373,20 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   canvas.addEventListener('pointermove', (event) => {
     if (!canvasRect) canvasRect = canvas.getBoundingClientRect();
     pointerX = ((event.clientX - canvasRect.left) / canvasRect.width - 0.5) * 2;
-    pointerY = ((event.clientY - canvasRect.top) / canvasRect.height - 0.5) * 2;
   }, { passive: true });
   window.addEventListener('scroll', () => { canvasRect = null; }, { passive: true });
   canvas.addEventListener('pointerleave', () => {
     pointerX = 0;
-    pointerY = 0;
   });
   controls.theta?.addEventListener('input', () => {
     initialTheta = Number.parseFloat(controls.theta.value) || 2.18;
-    resetSimulation();
+    scheduleReset();
   });
   controls.damping?.addEventListener('input', () => {
     damping = Math.max(0, Number.parseFloat(controls.damping.value) || 0);
-    resetSimulation();
+    scheduleReset();
   });
-  controls.reset?.addEventListener('click', resetSimulation);
+  controls.reset?.addEventListener('click', scheduleReset);
   controls.toggle?.addEventListener('click', () => setPaused(!paused));
 
   let resizeRaf = 0;
@@ -340,7 +401,13 @@ import { createRk4Work, rk4StepDouble } from './pendulum-demo-kernel.js';
   }, { passive: true });
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) stop();
-    else if (visible && !reduced) start();
+    else if (visible && !reduced && !warming) start();
+    updateReadouts();
+  });
+  reducedMotionQuery.addEventListener?.('change', () => {
+    reduced = reducedMotionQuery.matches || captureMode;
+    if (reduced) stop();
+    else if (visible && !warming && !paused && !document.hidden) start();
     updateReadouts();
   });
 

@@ -1,20 +1,24 @@
 // ============================================================================
 // PENDULUM LAB — React Bits effects, ported to framework-free vanilla JS.
 // Adapted from React Bits (MIT): MagicBento (spotlight + particles + border
-// glow + tilt + magnetism + click ripple), TextType (typewriter rotation), and
-// DecryptedText (scramble-on-view). Re-skinned to the site's cyan/violet DNA.
+// glow + tilt + magnetism) and DecryptedText (scramble-on-view). Re-skinned to
+// the site's cyan/violet DNA.
 // Uses the already-loaded global GSAP; degrades gracefully without it and under
 // reduced-motion / coarse-pointer devices.
 // ============================================================================
 (function () {
   'use strict';
 
-  const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    || window.matchMedia('(max-width: 720px)').matches
-    || navigator.connection?.saveData === true
-    || captureMode;
-  const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const query = new URLSearchParams(window.location.search);
+  const queryFlag = (name) => /^(?:1|true|yes)$/i.test(query.get(name) || '');
+  const captureMode = queryFlag('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+  const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const compactQuery = window.matchMedia('(max-width: 720px)');
+  const fineQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const readReduced = () => motionQuery.matches || compactQuery.matches
+    || navigator.connection?.saveData === true || captureMode;
+  let reduced = readReduced();
+  let fine = fineQuery.matches;
   const hasGsap = typeof window.gsap !== 'undefined';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -23,50 +27,7 @@
   const VIOLET = '157, 120, 255';
 
   // ==========================================================================
-  // 1) TEXT TYPE — rotating typewriter line
-  // ==========================================================================
-  function initTextType() {
-    $$('[data-typetext]').forEach((el) => {
-      let phrases;
-      try { phrases = JSON.parse(el.dataset.phrases || '[]'); }
-      catch { phrases = []; }
-      if (!phrases.length) return;
-
-      const content = document.createElement('span');
-      content.className = 'tt-content';
-      const cursor = document.createElement('span');
-      cursor.className = 'tt-cursor';
-      cursor.textContent = el.dataset.cursor || '▍';
-      el.textContent = '';
-      el.append(content, cursor);
-
-      if (reduced) { content.textContent = phrases[0]; return; }
-
-      const typeSpeed = Number(el.dataset.typeSpeed) || 46;
-      const deleteSpeed = Number(el.dataset.deleteSpeed) || 26;
-      const pause = Number(el.dataset.pause) || 1600;
-      let idx = 0, char = 0, deleting = false;
-
-      function step() {
-        const word = phrases[idx];
-        if (!deleting) {
-          char++;
-          content.textContent = word.slice(0, char);
-          if (char === word.length) { deleting = true; return setTimeout(step, pause); }
-          setTimeout(step, typeSpeed + Math.random() * 40);
-        } else {
-          char--;
-          content.textContent = word.slice(0, char);
-          if (char === 0) { deleting = false; idx = (idx + 1) % phrases.length; return setTimeout(step, 360); }
-          setTimeout(step, deleteSpeed);
-        }
-      }
-      setTimeout(step, Number(el.dataset.initialDelay) || 700);
-    });
-  }
-
-  // ==========================================================================
-  // 2) DECRYPTED TEXT — structure-preserving scramble reveal.
+  // 1) DECRYPTED TEXT — structure-preserving scramble reveal.
   //    When a heading or short label scrolls in, every text node inside it is
   //    scrambled independently and then resolved left→right. Because we only
   //    rewrite text-node values (never innerHTML), gradient spans, <br> line
@@ -78,8 +39,8 @@
   const isSpace = (ch) => ch === ' ' || ch === '\n' || ch === '\t' || ch === ' ';
 
   // Never scramble text owned by another script: injected evidence numbers,
-  // the count-up telemetry, or the rotating typewriter line.
-  const DECRYPT_SKIP = '[data-count],[data-evidence],[data-evidence-count],[data-typetext],[data-no-decrypt]';
+  // the count-up telemetry, or another script-owned region.
+  const DECRYPT_SKIP = '[data-count],[data-evidence],[data-evidence-count],[data-no-decrypt]';
 
   function collectTextNodes(el) {
     const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, {
@@ -119,6 +80,11 @@
     if (index === -1) return;
     clearTimeout(job.deadline);
     for (const item of job.nodes) item.node.nodeValue = item.base; // exact restore
+    if (job.visual && job.accessible) {
+      while (job.visual.firstChild) job.el.insertBefore(job.visual.firstChild, job.visual);
+      job.visual.remove();
+      job.accessible.remove();
+    }
     job.el.classList.remove('is-decrypting');
     job.el.classList.add('is-decrypted');
     scrambleJobs.splice(index, 1);
@@ -140,7 +106,6 @@
     if (el.__decrypted) return;
     el.__decrypted = true;
     const accessibleText = (el.textContent || '').replace(/\s+/g, ' ').trim();
-    if (accessibleText && !el.hasAttribute('aria-label')) el.setAttribute('aria-label', accessibleText);
     const nodes = collectTextNodes(el);
     if (!nodes.length) return;
     let total = 0;
@@ -148,8 +113,20 @@
       for (let i = 0; i < item.base.length; i++) if (!isSpace(item.base[i])) total++;
     }
     if (!total) return;
+    // Keep a stable, valid accessible copy while the visible glyphs animate.
+    // `aria-label` is not permitted on every generic span in the target list,
+    // so use real hidden text and hide only the transient visual copy.
+    const visual = document.createElement('span');
+    visual.className = 'scramble-visual';
+    visual.setAttribute('aria-hidden', 'true');
+    while (el.firstChild) visual.append(el.firstChild);
+    const accessible = document.createElement('span');
+    accessible.className = 'scramble-accessible';
+    accessible.dataset.noDecrypt = '';
+    accessible.textContent = accessibleText;
+    el.append(visual, accessible);
     const job = {
-      el, nodes, total,
+      el, nodes, total, visual, accessible,
       start: performance.now() + (delay || 0),
       duration: Math.min(1000, 340 + total * 11),
     };
@@ -179,7 +156,7 @@
 
   function initDecrypt() {
     const targets = Array.from(new Set($$(SCRAMBLE_TARGETS)));
-    if (!targets.length || reduced || !('IntersectionObserver' in window)) return;
+    if (!targets.length || reduced || !('IntersectionObserver' in window)) return () => {};
 
     const io = new IntersectionObserver((entries) => {
       entries.forEach((en) => {
@@ -198,6 +175,10 @@
       if (r.top < vh && r.bottom > 0) startScramble(el, (boot++) * 120);
       else io.observe(el);
     });
+    return () => {
+      io.disconnect();
+      while (scrambleJobs.length) finishScramble(scrambleJobs[0]);
+    };
   }
 
   // ==========================================================================
@@ -212,16 +193,37 @@
     return el;
   }
 
-  function enhanceCard(card, color) {
+  let layoutVersion = 0;
+
+  function enhanceCard(card, color, signal) {
     const particles = [];
     const timeouts = [];
     let hovered = false;
     let seed = null;
+    let rect = null;
+    let rectVersion = -1;
+    const setters = hasGsap ? {
+      rotateX: gsap.quickTo(card, 'rotateX', { duration: 0.24, ease: 'power2.out' }),
+      rotateY: gsap.quickTo(card, 'rotateY', { duration: 0.24, ease: 'power2.out' }),
+      x: gsap.quickTo(card, 'x', { duration: 0.24, ease: 'power2.out' }),
+      y: gsap.quickTo(card, 'y', { duration: 0.24, ease: 'power2.out' }),
+    } : null;
+    if (hasGsap) gsap.set(card, { transformPerspective: 900 });
 
-    function clearParticles() {
+    function measure() {
+      if (rectVersion !== layoutVersion || !rect) {
+        rect = card.getBoundingClientRect();
+        rectVersion = layoutVersion;
+        seed = null;
+      }
+      return rect;
+    }
+
+    function clearParticles(immediate = false) {
       timeouts.forEach(clearTimeout); timeouts.length = 0;
       particles.forEach((p) => {
-        if (hasGsap) {
+        if (hasGsap) gsap.killTweensOf(p);
+        if (hasGsap && !immediate) {
           gsap.to(p, { scale: 0, opacity: 0, duration: 0.3, ease: 'back.in(1.7)', onComplete: () => p.remove() });
         } else { p.remove(); }
       });
@@ -231,7 +233,7 @@
     function spawn() {
       if (!hovered) return;
       if (!seed) {
-        const { width, height } = card.getBoundingClientRect();
+        const { width, height } = measure();
         seed = Array.from({ length: 11 }, () => [Math.random() * width, Math.random() * height]);
       }
       seed.forEach(([x, y], i) => {
@@ -251,114 +253,132 @@
       });
     }
 
-    card.addEventListener('pointerenter', () => { hovered = true; spawn(); });
+    card.addEventListener('pointerenter', () => {
+      hovered = true;
+      measure();
+      spawn();
+    }, { signal, passive: true });
     card.addEventListener('pointerleave', () => {
       hovered = false; clearParticles();
-      if (hasGsap) gsap.to(card, { rotateX: 0, rotateY: 0, x: 0, y: 0, duration: 0.35, ease: 'power2.out' });
-    });
+      if (setters) Object.values(setters).forEach((set) => set(0));
+    }, { signal, passive: true });
     card.addEventListener('pointermove', (e) => {
-      const r = card.getBoundingClientRect();
+      const r = measure();
       const x = e.clientX - r.left, y = e.clientY - r.top;
       const cx = r.width / 2, cy = r.height / 2;
-      if (hasGsap) {
-        gsap.to(card, {
-          rotateX: ((y - cy) / cy) * -6,
-          rotateY: ((x - cx) / cx) * 6,
-          x: (x - cx) * 0.04, y: (y - cy) * 0.04,
-          duration: 0.25, ease: 'power2.out', transformPerspective: 900
-        });
+      if (setters && cx > 0 && cy > 0) {
+        setters.rotateX(((y - cy) / cy) * -6);
+        setters.rotateY(((x - cx) / cx) * 6);
+        setters.x((x - cx) * 0.04);
+        setters.y((y - cy) * 0.04);
       }
-    });
-    card.addEventListener('click', (e) => {
-      const r = card.getBoundingClientRect();
-      const x = e.clientX - r.left, y = e.clientY - r.top;
-      const maxD = Math.max(Math.hypot(x, y), Math.hypot(x - r.width, y),
-        Math.hypot(x, y - r.height), Math.hypot(x - r.width, y - r.height));
-      const ripple = document.createElement('span');
-      ripple.className = 'mb-ripple';
-      ripple.style.cssText =
-        `width:${maxD * 2}px;height:${maxD * 2}px;left:${x - maxD}px;top:${y - maxD}px;` +
-        `background:radial-gradient(circle,rgba(${color},.4) 0%,rgba(${color},.18) 30%,transparent 70%);`;
-      card.appendChild(ripple);
+    }, { signal, passive: true });
+
+    return () => {
+      hovered = false;
+      clearParticles(true);
       if (hasGsap) {
-        gsap.fromTo(ripple, { scale: 0, opacity: 1 }, { scale: 1, opacity: 0, duration: 0.8, ease: 'power2.out', onComplete: () => ripple.remove() });
-      } else { setTimeout(() => ripple.remove(), 600); }
-    });
+        gsap.killTweensOf(card);
+        gsap.set(card, { clearProps: 'transform' });
+      }
+    };
   }
 
-  function initGlobalSpotlight(grid, color, radius) {
+  function initGlobalSpotlight(configs, signal) {
     const spotlight = document.createElement('div');
     spotlight.className = 'mb-spotlight';
-    spotlight.style.background =
-      `radial-gradient(circle, rgba(${color},.14) 0%, rgba(${color},.07) 18%, rgba(${color},.03) 35%, transparent 60%)`;
     document.body.appendChild(spotlight);
-    const proximity = radius * 0.5, fade = radius * 0.75;
+    const states = configs.map(({ grid, cards, color, radius }) => ({
+      grid, cards, color,
+      proximity: radius * 0.5,
+      fade: radius * 0.75,
+      gridRect: null,
+      cardRects: [],
+      measured: false,
+    }));
+    let activeColor = '';
 
-    // Grid + card rects are cached and refreshed only on scroll/resize, so this
-    // document-level handler never measures layout per pointermove. Movement is
-    // coalesced into one animation frame that writes glow vars — previously it
-    // read the grid plus every card rect on every mouse move (for two grids),
-    // the dominant source of hover jank on the card sections.
-    let cards = $$('.mb-card', grid);
-    let gridRect = grid.getBoundingClientRect();
-    let cardRects = cards.map((card) => card.getBoundingClientRect());
-    let measured = true;
     function measure() {
-      cards = $$('.mb-card', grid);
-      gridRect = grid.getBoundingClientRect();
-      cardRects = cards.map((card) => card.getBoundingClientRect());
-      measured = true;
+      states.forEach((state) => {
+        state.gridRect = state.grid.getBoundingClientRect();
+        state.cardRects = state.cards.map((card) => card.getBoundingClientRect());
+        state.measured = true;
+      });
     }
-    const invalidate = () => { measured = false; };
-    window.addEventListener('scroll', invalidate, { passive: true });
-    window.addEventListener('resize', invalidate, { passive: true });
+    const invalidate = () => {
+      layoutVersion += 1;
+      states.forEach((state) => { state.measured = false; });
+    };
+    window.addEventListener('scroll', invalidate, { signal, passive: true });
+    window.addEventListener('resize', invalidate, { signal, passive: true });
 
     let lastX = 0, lastY = 0, raf = 0;
+    const hide = () => {
+      spotlight.style.opacity = '0';
+      states.forEach((state) => {
+        state.cards.forEach((card) => card.style.setProperty('--mb-glow', '0'));
+      });
+    };
     function paint() {
       raf = 0;
-      if (!measured) measure();
-      const section = gridRect;
-      const inside = lastX >= section.left - 40 && lastX <= section.right + 40 &&
-        lastY >= section.top - 40 && lastY <= section.bottom + 40;
-      if (!inside) {
-        spotlight.style.opacity = '0';
-        for (const card of cards) card.style.setProperty('--mb-glow', '0');
-        return;
+      if (states.some((state) => !state.measured)) measure();
+      const active = states.find((state) => {
+        const section = state.gridRect;
+        return lastX >= section.left - 40 && lastX <= section.right + 40
+          && lastY >= section.top - 40 && lastY <= section.bottom + 40;
+      });
+      if (!active) { hide(); return; }
+      states.filter((state) => state !== active).forEach((state) => {
+        state.cards.forEach((card) => card.style.setProperty('--mb-glow', '0'));
+      });
+      if (activeColor !== active.color) {
+        activeColor = active.color;
+        spotlight.style.background = `radial-gradient(circle, rgba(${active.color},.14) 0%, rgba(${active.color},.07) 18%, rgba(${active.color},.03) 35%, transparent 60%)`;
       }
       let minDist = Infinity;
-      for (let i = 0; i < cards.length; i++) {
-        const r = cardRects[i];
+      for (let i = 0; i < active.cards.length; i++) {
+        const r = active.cardRects[i];
         if (!r) continue;
-        const card = cards[i];
+        const card = active.cards[i];
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
         const d = Math.hypot(lastX - cx, lastY - cy) - Math.max(r.width, r.height) / 2;
         const eff = Math.max(0, d);
         minDist = Math.min(minDist, eff);
         let glow = 0;
-        if (eff <= proximity) glow = 1;
-        else if (eff <= fade) glow = (fade - eff) / (fade - proximity);
+        if (eff <= active.proximity) glow = 1;
+        else if (eff <= active.fade) glow = (active.fade - eff) / (active.fade - active.proximity);
         card.style.setProperty('--mb-glow-x', `${((lastX - r.left) / r.width) * 100}%`);
         card.style.setProperty('--mb-glow-y', `${((lastY - r.top) / r.height) * 100}%`);
         card.style.setProperty('--mb-glow', glow.toFixed(3));
       }
       spotlight.style.left = lastX + 'px';
       spotlight.style.top = lastY + 'px';
-      spotlight.style.opacity = minDist <= proximity ? '0.9'
-        : minDist <= fade ? (((fade - minDist) / (fade - proximity)) * 0.9).toFixed(3) : '0';
+      spotlight.style.opacity = minDist <= active.proximity ? '0.9'
+        : minDist <= active.fade
+          ? (((active.fade - minDist) / (active.fade - active.proximity)) * 0.9).toFixed(3)
+          : '0';
     }
     document.addEventListener('pointermove', (e) => {
       lastX = e.clientX; lastY = e.clientY;
       if (!raf && !document.hidden) raf = requestAnimationFrame(paint);
-    }, { passive: true });
+    }, { signal, passive: true });
     document.addEventListener('pointerleave', () => {
       if (raf) { cancelAnimationFrame(raf); raf = 0; }
-      spotlight.style.opacity = '0';
-      for (const card of cards) card.style.setProperty('--mb-glow', '0');
-    });
+      hide();
+    }, { signal, passive: true });
+    measure();
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      hide();
+      spotlight.remove();
+    };
   }
 
   function initMagicBento() {
-    if (!fine || reduced) return; // full effect is desktop / fine-pointer only
+    if (!fine || reduced) return () => {}; // full effect is desktop / fine-pointer only
+    const controller = new AbortController();
+    const cleanups = [];
+    const activeConfigs = [];
     // Grids to upgrade: capability cards and mode cards. (Frontier cards own
     // their own ::after top-line, so they are intentionally left untouched.)
     const grids = [
@@ -373,17 +393,52 @@
       cards.forEach((c) => {
         c.classList.add('mb-card');
         c.style.setProperty('--mb-color', color);
-        enhanceCard(c, color);
+        cleanups.push(enhanceCard(c, color, controller.signal));
       });
-      initGlobalSpotlight(grid, color, radius);
+      activeConfigs.push({ grid, cards, color, radius });
     });
+    const cleanupSpotlight = activeConfigs.length
+      ? initGlobalSpotlight(activeConfigs, controller.signal)
+      : () => {};
+    return () => {
+      controller.abort();
+      cleanupSpotlight();
+      cleanups.forEach((cleanup) => cleanup());
+      activeConfigs.forEach(({ cards }) => cards.forEach((card) => {
+        card.classList.remove('mb-card');
+        ['--mb-color', '--mb-glow', '--mb-glow-x', '--mb-glow-y'].forEach((name) => {
+          card.style.removeProperty(name);
+        });
+      }));
+    };
   }
 
   // ==========================================================================
+  let effectCleanups = [];
+  function activateEffects() {
+    effectCleanups.forEach((cleanup) => cleanup());
+    effectCleanups = [initDecrypt(), initMagicBento()];
+  }
+
   function boot() {
-    initTextType();
-    initDecrypt();
-    initMagicBento();
+    activateEffects();
+    const refreshPreferences = () => {
+      const nextReduced = readReduced();
+      const nextFine = fineQuery.matches;
+      if (nextReduced === reduced && nextFine === fine) return;
+      reduced = nextReduced;
+      fine = nextFine;
+      activateEffects();
+    };
+    [motionQuery, compactQuery, fineQuery].forEach((media) => {
+      media.addEventListener?.('change', refreshPreferences);
+    });
+    navigator.connection?.addEventListener?.('change', refreshPreferences);
+    window.addEventListener('pagehide', (event) => {
+      if (event.persisted) return;
+      effectCleanups.forEach((cleanup) => cleanup());
+      effectCleanups = [];
+    }, { once: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

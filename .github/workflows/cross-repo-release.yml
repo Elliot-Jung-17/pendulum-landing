@@ -20,9 +20,7 @@ on:
         required: true
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: landing-main-writes
@@ -31,6 +29,9 @@ concurrency:
 jobs:
   gate-and-tag:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
     env:
       RELEASE_TAG: ${{ github.event.client_payload.tag || inputs.tag }}
       RELEASE_COMMIT: ${{ github.event.client_payload.release_commit || inputs.release_commit }}
@@ -38,14 +39,42 @@ jobs:
       EVIDENCE_BASE64: ${{ github.event.client_payload.evidence_base64 || '' }}
       EXPECTED_EVIDENCE_SHA256: ${{ github.event.client_payload.evidence_sha256 || '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Validate the simulator tag and immutable commit coordinate
+        shell: bash
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]] || {
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          }
+          [[ "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "release_commit must be a full lowercase SHA-1" >&2
+            exit 1
+          }
+          [[ "$EXPECTED_SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "source_commit must be a full lowercase SHA-1" >&2
+            exit 1
+          }
+          if [ -n "$EXPECTED_EVIDENCE_SHA256" ]; then
+            [[ "$EXPECTED_EVIDENCE_SHA256" =~ ^[0-9a-f]{64}$ ]] || {
+              echo "evidence_sha256 must be a full lowercase SHA-256" >&2
+              exit 1
+            }
+          fi
+          refs="$(git ls-remote --exit-code --tags https://github.com/elliotjung/pendulum-lab.git \
+            "refs/tags/$RELEASE_TAG" "refs/tags/$RELEASE_TAG^{}")"
+          remote_commit="$(printf '%s\n' "$refs" | awk '/\^\{\}$/ {print $1; found=1} END {if (!found && NR) print first} NR==1 {first=$1}')"
+          [ "$remote_commit" = "$RELEASE_COMMIT" ] || {
+            echo "Simulator tag $RELEASE_TAG resolves to $remote_commit, not $RELEASE_COMMIT" >&2
+            exit 1
+          }
       - name: Materialize the exact release evidence payload
         shell: bash
         run: |
@@ -92,7 +121,15 @@ jobs:
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -A
+            unexpected="$(git status --short | cut -c4- | grep -Ev '^(assets/(evidence-summary\.json|demo-kernel-manifest\.json|changelog-highlights\.json|i18n-core\.js|og-card\.png|og-card-meta\.json)|index\.html|ko\.html)$' || true)"
+            [ -z "$unexpected" ] || {
+              echo "Refusing to commit unexpected generated paths:" >&2
+              printf '%s\n' "$unexpected" >&2
+              exit 1
+            }
+            git add -- assets/evidence-summary.json assets/demo-kernel-manifest.json \
+              assets/changelog-highlights.json assets/i18n-core.js assets/og-card.png \
+              assets/og-card-meta.json index.html ko.html
             git commit -m "chore: sync ${RELEASE_TAG} release evidence"
             git push
           fi
@@ -108,25 +145,3 @@ jobs:
             git tag -a "$RELEASE_TAG" -m "Pendulum Lab coordinated release $RELEASE_TAG"
             git push origin "$RELEASE_TAG"
           fi
-      - name: Prepare immutable Pages artifact
-        shell: bash
-        run: |
-          mkdir -p _site
-          cp index.html ko.html 404.html robots.txt sitemap.xml _headers _site/
-          mkdir -p _site/assets
-          rsync -a assets/ _site/assets/
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-  deploy-pages:
-    needs: gate-and-tag
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy the synchronized landing release
-        id: deployment
-        uses: actions/deploy-pages@v4

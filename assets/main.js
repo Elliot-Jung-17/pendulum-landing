@@ -7,11 +7,17 @@
 (function () {
   'use strict';
   document.documentElement.classList.add('js-ready');
-  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const compactViewport = window.matchMedia('(max-width: 720px)').matches;
-  const reducedEffects = reduced || compactViewport;
-  const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
-  const captureMode = new URLSearchParams(window.location.search).has('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const reducedDataQuery = window.matchMedia('(prefers-reduced-data: reduce)');
+  const compactQuery = window.matchMedia('(max-width: 720px)');
+  const finePointerQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const queryFlag = (name) => /^(?:1|true|yes)$/i.test(new URLSearchParams(window.location.search).get(name) || '');
+  let reduced = reducedMotionQuery.matches;
+  let reducedData = reducedDataQuery.matches || navigator.connection?.saveData === true;
+  let compactViewport = compactQuery.matches;
+  let reducedEffects = reduced || compactViewport;
+  let fine = finePointerQuery.matches;
+  const captureMode = queryFlag('captureHero') || window.__PENDULUM_CAPTURE_HERO === true;
   const koreanPage = document.documentElement.lang === 'ko';
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -32,6 +38,30 @@
       /* leave malformed/non-HTTP fallback links untouched */
     }
   });
+
+  // Preserve attribution and the reader's current section when switching
+  // between the statically generated language pages. The plain href remains a
+  // complete no-JS fallback; this enhancement also supports open-in-new-tab.
+  const languageToggle = $('#lang-toggle');
+  function refreshLanguageHref() {
+    if (!(languageToggle instanceof HTMLAnchorElement)) return;
+    try {
+      const current = new URL(window.location.href);
+      const target = new URL(languageToggle.getAttribute('href') || '', current);
+      const targetLanguage = languageToggle.hreflang || (koreanPage ? 'en' : 'ko');
+      target.search = '';
+      current.searchParams.forEach((value, key) => {
+        if (key !== 'lang') target.searchParams.append(key, value);
+      });
+      target.searchParams.set('lang', targetLanguage);
+      target.hash = current.hash;
+      languageToggle.href = target.toString();
+    } catch {
+      /* retain the static language URL */
+    }
+  }
+  refreshLanguageHref();
+  window.addEventListener('hashchange', refreshLanguageHref, { passive: true });
 
   // ---- Shared evidence summary --------------------------------------------
   function evidenceIsUsable(summary) {
@@ -223,18 +253,35 @@
   const mainScriptUrl = document.currentScript?.src || new URL('assets/main.js', window.location.href).href;
   const sceneUrl = new URL('scene.bundle.js', mainScriptUrl).href;
   const captureHero = captureMode;
-  const reducedData = (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-data: reduce)').matches)
-    || navigator.connection?.saveData === true;
   const lowMemory = typeof navigator.deviceMemory === 'number' && navigator.deviceMemory <= 2;
   let heroSceneRequested = false;
+  let heroIntentController = null;
+  let heroIdleHandle = 0;
+  let heroTimerHandle = 0;
+
+  function clearHeroIntent() {
+    heroIntentController?.abort();
+    heroIntentController = null;
+    if (heroIdleHandle && 'cancelIdleCallback' in window) window.cancelIdleCallback(heroIdleHandle);
+    if (heroTimerHandle) window.clearTimeout(heroTimerHandle);
+    heroIdleHandle = 0;
+    heroTimerHandle = 0;
+  }
+
   function requestHeroScene() {
     if (heroSceneRequested) return;
-    heroSceneRequested = true;
-    if (!captureHero && (reducedEffects || reducedData || lowMemory)) {
+    // Compact screens use scene.js's reduced geometry/bloom-free renderer.
+    // Only an explicit motion/data preference or a genuinely low-memory tier
+    // stays on the poster, so capable phones still receive the live 3D descent.
+    if (!captureHero && (reduced || reducedData || lowMemory)) {
+      clearHeroIntent();
       document.body.classList.add(reduced ? 'reduced-motion-hero' : 'low-power-hero');
       window.__heroPainted = true;
       return;
     }
+    heroSceneRequested = true;
+    clearHeroIntent();
+    document.body.classList.remove('reduced-motion-hero', 'low-power-hero');
     import(sceneUrl).catch(() => {
       document.body.classList.add('no-webgl');
       window.__heroPainted = true;
@@ -243,32 +290,144 @@
   if (captureHero) {
     requestHeroScene();
   } else {
-    const intentOptions = { once: true, passive: true };
+    heroIntentController = new AbortController();
+    const intentOptions = { once: true, passive: true, signal: heroIntentController.signal };
     const hero = document.querySelector('.hero');
     hero?.addEventListener('pointermove', requestHeroScene, intentOptions);
     hero?.addEventListener('pointerdown', requestHeroScene, intentOptions);
     hero?.addEventListener('touchstart', requestHeroScene, intentOptions);
     window.addEventListener('scroll', requestHeroScene, intentOptions);
-    window.addEventListener('keydown', requestHeroScene, { once: true });
+    window.addEventListener('keydown', requestHeroScene, { once: true, signal: heroIntentController.signal });
     if ('requestIdleCallback' in window) {
-      window.requestIdleCallback(requestHeroScene, { timeout: 1200 });
+      heroIdleHandle = window.requestIdleCallback(requestHeroScene, { timeout: 1200 });
     } else {
-      window.setTimeout(requestHeroScene, 450);
+      heroTimerHandle = window.setTimeout(requestHeroScene, 450);
     }
   }
+
+  function syncHeroPreferences({ allowLoad = true } = {}) {
+    reduced = reducedMotionQuery.matches;
+    reducedData = reducedDataQuery.matches || navigator.connection?.saveData === true;
+    compactViewport = compactQuery.matches;
+    reducedEffects = reduced || compactViewport;
+    fine = finePointerQuery.matches;
+    const usePoster = !captureHero && (reduced || reducedData || lowMemory);
+    document.body.classList.toggle('reduced-motion-hero', usePoster && reduced);
+    document.body.classList.toggle('low-power-hero', usePoster && !reduced);
+    document.body.classList.toggle('effects-reduced', reducedEffects || !fine);
+    document.body.classList.toggle('cursor-active', fine && !reducedEffects && !captureMode);
+    if (usePoster) {
+      window.__hero?.pause();
+      window.__heroPainted = true;
+      clearHeroIntent();
+      if (window.ScrollTrigger) window.ScrollTrigger.getAll().forEach((trigger) => trigger.kill(false));
+      $$('.reveal, [data-wipe], [data-rise]').forEach((el) => {
+        el.style.opacity = '1';
+        el.style.clipPath = 'none';
+        el.style.transform = 'none';
+        el.style.filter = 'none';
+      });
+    } else if (heroSceneRequested) {
+      window.__hero?.resume();
+    } else if (allowLoad) {
+      requestHeroScene();
+    }
+  }
+
+  const preferenceQueries = [reducedMotionQuery, reducedDataQuery, compactQuery, finePointerQuery];
+  preferenceQueries.forEach((query) => query.addEventListener?.('change', () => syncHeroPreferences()));
+  navigator.connection?.addEventListener?.('change', () => syncHeroPreferences());
+  syncHeroPreferences({ allowLoad: false });
 
   // ---- NAV state, scrim, scroll progress ----------------------------------
   const nav = $('.nav');
   const scrim = $('.hero-scrim');
   const progress = $('.scroll-progress');
+  const orbitDescent = $('#orbit-descent');
+  const orbitBeats = $$('[data-orbit-beat]');
+  const descentPhase = $('[data-descent-phase]');
+  let orbitStart = Number.POSITIVE_INFINITY;
+  let orbitEnd = Number.POSITIVE_INFINITY;
+  let orbitBeatCenters = [];
+  let activeOrbitBeat = -1;
+  let previousScrollY = window.scrollY;
+  let previousScrollTime = performance.now();
+  window.__orbitScrollProgress = 0;
+  window.__orbitScrollVelocity = 0;
+
+  function cacheOrbitMetrics() {
+    if (!orbitDescent) return;
+    const rect = orbitDescent.getBoundingClientRect();
+    orbitStart = rect.top + window.scrollY;
+    orbitEnd = Math.max(orbitStart + 1, orbitStart + orbitDescent.offsetHeight - window.innerHeight);
+    orbitBeatCenters = orbitBeats.map((beat) => {
+      const beatRect = beat.getBoundingClientRect();
+      return beatRect.top + window.scrollY + beatRect.height / 2;
+    });
+  }
+
+  function setOrbitBeat(index) {
+    if (index === activeOrbitBeat) return;
+    activeOrbitBeat = index;
+    orbitBeats.forEach((beat, beatIndex) => {
+      const current = beatIndex === index;
+      beat.classList.toggle('is-current', current);
+      if (current) beat.setAttribute('aria-current', 'step');
+      else beat.removeAttribute('aria-current');
+    });
+    const label = orbitBeats[index]?.querySelector('.descent-index')?.textContent?.trim();
+    if (descentPhase && label) descentPhase.textContent = label;
+  }
+
   function onScroll() {
     // Read layout first, then write — reading scrollHeight after touching
     // scrim/progress styles would force a synchronous reflow every frame.
     const sy = window.scrollY;
     const viewport = window.innerHeight;
     const max = document.documentElement.scrollHeight - viewport;
+    const now = performance.now();
+    const elapsed = Math.max(1 / 240, Math.min(0.12, (now - previousScrollTime) / 1000));
+    const rawVelocity = ((sy - previousScrollY) / Math.max(viewport, 1)) / elapsed;
+    const velocityTarget = Math.max(-1, Math.min(1, rawVelocity * 0.12));
+    const velocityBlend = 1 - Math.exp(-elapsed * 18);
+    previousScrollY = sy;
+    previousScrollTime = now;
+    window.__orbitScrollVelocity += (velocityTarget - window.__orbitScrollVelocity) * velocityBlend;
+    const orbitRange = Math.max(1, orbitEnd - orbitStart);
+    const orbitProgress = Math.max(0, Math.min(1, (sy - orbitStart) / orbitRange));
+    window.__orbitScrollProgress = orbitProgress;
+    if (orbitDescent) orbitDescent.style.setProperty('--orbit-scroll', orbitProgress.toFixed(4));
+    const descentEntry = orbitStart - viewport * 0.35;
+    const descentExit = orbitEnd + viewport * 0.2;
+    const descentActive = sy >= descentEntry && sy <= descentExit;
+    document.body.classList.toggle('orbit-descent-active', descentActive);
+    if (descentActive && orbitBeatCenters.length) {
+      const viewportCenter = sy + viewport / 2;
+      let nearest = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      orbitBeatCenters.forEach((center, index) => {
+        const distance = Math.abs(center - viewportCenter);
+        if (distance < nearestDistance) { nearest = index; nearestDistance = distance; }
+      });
+      setOrbitBeat(nearest);
+    } else {
+      setOrbitBeat(-1);
+    }
     nav.classList.toggle('scrolled', sy > 40);
-    if (scrim) scrim.style.opacity = Math.min(0.92, sy / (viewport * 0.9) * 0.92).toFixed(3);
+    if (scrim) {
+      const heroOpacity = Math.min(0.92, sy / (viewport * 0.9) * 0.92);
+      let scrimOpacity = heroOpacity;
+      if (orbitDescent && sy >= descentEntry && sy < orbitStart) {
+        const entering = (sy - descentEntry) / Math.max(orbitStart - descentEntry, 1);
+        scrimOpacity = heroOpacity + (0.12 - heroOpacity) * entering;
+      } else if (orbitDescent && sy >= orbitStart && sy <= orbitEnd) {
+        scrimOpacity = 0.12 + orbitProgress * 0.2;
+      } else if (orbitDescent && sy > orbitEnd) {
+        const leaving = Math.min(1, (sy - orbitEnd) / Math.max(viewport * 0.42, 1));
+        scrimOpacity = 0.32 + leaving * 0.6;
+      }
+      scrim.style.opacity = scrimOpacity.toFixed(3);
+    }
     if (progress) progress.style.width = (max > 0 ? (sy / max) * 100 : 0).toFixed(2) + '%';
   }
   let scrollFrame = 0;
@@ -280,6 +439,9 @@
     });
   }
   window.addEventListener('scroll', scheduleScroll, { passive: true });
+  window.addEventListener('resize', () => { cacheOrbitMetrics(); scheduleScroll(); }, { passive: true });
+  window.addEventListener('load', () => { cacheOrbitMetrics(); scheduleScroll(); }, { once: true });
+  cacheOrbitMetrics();
   onScroll();
 
   // ---- Small-screen menu: close after navigating (works without JS too) ----
@@ -318,7 +480,6 @@
   // ---- Mouse engine: spotlight + layered parallax + tilt ------------------
   const glow = $('.cursor-glow');
   const parallaxEls = $$('[data-mouse]').map((el) => ({ el, depth: parseFloat(el.dataset.mouse) || 12 }));
-  const tiltEls = $$('[data-tilt]');
   const pointer = { tx: 0, ty: 0, x: 0, y: 0 };   // normalised -0.5..0.5
   const spot = { tx: window.innerWidth / 2, ty: window.innerHeight / 2, x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
@@ -355,32 +516,19 @@
   }
   function cancelWrite(key) { pendingWrites.delete(key); }
 
-  if (fine && !reducedEffects && !captureMode) {
-    document.body.classList.add('cursor-active');
+  {
     window.addEventListener('pointermove', (e) => {
+      if (!fine || reducedEffects || captureMode) return;
       pointer.tx = e.clientX / window.innerWidth - 0.5;
       pointer.ty = e.clientY / window.innerHeight - 0.5;
       spot.tx = e.clientX; spot.ty = e.clientY;
       schedulePointerLoop();
     }, { passive: true });
 
-    // per-card 3D tilt (rect cached, transform written on the next frame)
-    tiltEls.forEach((card) => {
-      card.addEventListener('pointermove', (e) => {
-        const r = rectOf(card);
-        if (!r.width || !r.height) return;
-        const px = (e.clientX - r.left) / r.width - 0.5;
-        const py = (e.clientY - r.top) / r.height - 0.5;
-        queueWrite(card, () => {
-          card.style.transform = `rotateY(${(px * 10).toFixed(2)}deg) rotateX(${(-py * 10).toFixed(2)}deg) translateZ(8px)`;
-        });
-      }, { passive: true });
-      card.addEventListener('pointerleave', () => { cancelWrite(card); card.style.transform = ''; });
-    });
-
     // magnetic buttons
     $$('.btn').forEach((btn) => {
       btn.addEventListener('pointermove', (e) => {
+        if (!fine || reducedEffects || captureMode) return;
         const r = rectOf(btn);
         if (!r.width || !r.height) return;
         const mx = (e.clientX - r.left - r.width / 2) * 0.3;
@@ -394,6 +542,11 @@
     function tick() {
       pointerRaf = 0;
       if (document.hidden) return;
+      if (!fine || reducedEffects || captureMode) {
+        for (const p of parallaxEls) p.el.style.transform = '';
+        if (glow) glow.style.transform = '';
+        return;
+      }
       pointer.x += (pointer.tx - pointer.x) * 0.08;
       pointer.y += (pointer.ty - pointer.y) * 0.08;
       for (const p of parallaxEls) {
@@ -407,7 +560,9 @@
       if (moving > 0.005) pointerRaf = requestAnimationFrame(tick);
     }
     function schedulePointerLoop() {
-      if (!document.hidden && !pointerRaf) pointerRaf = requestAnimationFrame(tick);
+      if (!document.hidden && fine && !reducedEffects && !captureMode && !pointerRaf) {
+        pointerRaf = requestAnimationFrame(tick);
+      }
     }
     function syncPointerLoop() {
       if (document.hidden) {
@@ -474,11 +629,6 @@
       gsap.to(el, { yPercent: -depth * 100, ease: 'none',
         scrollTrigger: { trigger: el, start: 'top bottom', end: 'bottom top', scrub: true } });
     });
-    $$('[data-drift]').forEach((el) => {
-      gsap.fromTo(el, { yPercent: 16 }, { yPercent: -16, ease: 'none',
-        scrollTrigger: { trigger: el.closest('section') || el, start: 'top bottom', end: 'bottom top', scrub: true } });
-    });
-
     // scrubbed draw-on for the divergence diagram
     $$('.draw-path').forEach((path) => {
       const len = path.getTotalLength();
@@ -525,9 +675,10 @@
   // ---- capability card cursor glow ----------------------------------------
   // Fine-pointer only (touch has no hover) and rect-cached + frame-batched like
   // the other pointer effects, so scrubbing across the grid never thrashes.
-  if (fine && !reducedEffects && !captureMode) {
+  {
     $$('.cap-card').forEach((card) => {
       card.addEventListener('pointermove', (e) => {
+        if (!fine || reducedEffects || captureMode) return;
         const r = rectOf(card);
         if (!r.width || !r.height) return;
         const mx = (e.clientX - r.left) / r.width * 100;

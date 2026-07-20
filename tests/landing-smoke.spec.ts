@@ -18,7 +18,7 @@ test('landing page has no console errors and paints the hero', async ({ page }) 
   await page.waitForFunction(() => {
     const fallback = document.body.classList.contains('no-webgl') || document.body.classList.contains('low-power-hero') || document.body.classList.contains('reduced-motion-hero');
     return Boolean((window as unknown as { __heroPainted?: boolean }).__heroPainted) || fallback;
-  }, null, { timeout: 8_000 }).catch(() => undefined);
+  }, null, { timeout: 8_000 });
   await page.waitForFunction(() => Boolean((window as unknown as { __orbitConsolePainted?: boolean }).__orbitConsolePainted), null, { timeout: 8_000 });
 
   const nonBlank = await page.locator('#hero-canvas').evaluate((canvas: HTMLCanvasElement) => {
@@ -34,7 +34,7 @@ test('landing page has no console errors and paints the hero', async ({ page }) 
       }
     }
     return false;
-  }).catch(() => true);
+  });
 
   expect(nonBlank).toBeTruthy();
 
@@ -167,6 +167,7 @@ test('mobile launch CTA stays inside the viewport', async ({ page }) => {
 });
 
 test('mini lab controls reset the trajectory and update the app state link', async ({ page }) => {
+  test.setTimeout(60_000);
   await page.goto('/?captureHero=1');
   const theta = page.locator('[data-orbit-control="theta"]');
   const damping = page.locator('[data-orbit-control="damping"]');
@@ -224,10 +225,10 @@ test('capture mode freezes motion and produces a repeatable hero frame', async (
 });
 
 for (const route of ['/?captureHero=1', '/ko.html?lang=ko&captureHero=1']) {
-  test(`axe scan has no serious or critical violations: ${route}`, async ({ page }) => {
+  test(`axe scan has no moderate-or-higher violations: ${route}`, async ({ page }) => {
     await page.goto(route, { waitUntil: 'domcontentloaded' });
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
-    const blocking = result.violations.filter((violation) => violation.impact === 'serious' || violation.impact === 'critical');
+    const blocking = result.violations.filter((violation) => violation.impact === 'moderate' || violation.impact === 'serious' || violation.impact === 'critical');
     expect(blocking, blocking.map((violation) => `${violation.id}: ${violation.help}`).join('\n')).toEqual([]);
   });
 }
@@ -272,6 +273,8 @@ test('primary local assets and links are available', async ({ page, request }) =
 });
 
 test('KO/EN static pages: toggle, translation, app links, persistence', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
   const errors: string[] = [];
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());

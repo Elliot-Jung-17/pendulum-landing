@@ -15,21 +15,24 @@ concurrency:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run audit
       - run: npm run check
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run build:hero
       # ko.html is generated from index.html + the dictionary
       # (scripts/build-ko-page.mjs); fail if the committed page drifted.
       - run: npm run build:ko
-      - run: git diff --exit-code -- ko.html
-      - run: npm run smoke
-      - uses: actions/upload-artifact@v4
+      - run: git diff --exit-code -- assets/scene.bundle.js ko.html
+      - run: npm run smoke:ci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: landing-playwright-report
@@ -40,15 +43,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run audit
       - run: npm run check
-      - run: npm run lighthouse
-      - uses: actions/upload-artifact@v4
+      - run: npm run lighthouse:lhci
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: landing-lighthouse-report

@@ -23,7 +23,8 @@
     "lighthouse": "node scripts/run-lighthouse.mjs",
     "lighthouse:lhci": "lhci autorun",
     "test": "playwright test",
-    "smoke": "playwright test tests/landing-smoke.spec.ts --project=chromium"
+    "smoke": "playwright test tests/landing-smoke.spec.ts --project=chromium",
+    "smoke:ci": "playwright test tests/landing-smoke.spec.ts --project=chromium --project=mobile-chrome --project=firefox --project=webkit"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
